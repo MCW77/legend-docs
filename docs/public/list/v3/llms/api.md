@@ -53,6 +53,20 @@ renderItem: (props: { item: ItemT; index: number; extraData: any; type?: string;
 
 Takes an item from data and renders it into the list in data mode. The `type` parameter is available when using `getItemType`.
 
+`renderItem` is called as a render callback. If your row uses hooks, return a component from the callback rather than passing the component function directly:
+
+```tsx
+const Row = ({ item }: { item: ItemT }) => {
+  const value = useRowValue(item.id);
+  return <Text>{value}</Text>;
+};
+
+<LegendList
+  data={items}
+  renderItem={({ item }) => <Row item={item} />}
+/>
+```
+
 See [React Native Docs](https://reactnative.dev/docs/flatlist#renderItem).
 
 ### children

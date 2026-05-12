@@ -55,6 +55,20 @@ renderItem: (props: { item: ItemT; index: number; extraData: any; type?: string;
 
 Takes an item from data and renders it into the list in data mode. The `type` parameter is available when using `getItemType`.
 
+`renderItem` is called as a render callback. If your row uses hooks, return a component from the callback rather than passing the component function directly:
+
+```tsx
+const Row = ({ item }: { item: ItemT }) => {
+  const value = useRowValue(item.id);
+  return <Text>{value}</Text>;
+};
+
+<LegendList
+  data={items}
+  renderItem={({ item }) => <Row item={item} />}
+/>
+```
+
 See [React Native Docs](https://reactnative.dev/docs/flatlist#renderItem).
 
 ### children
@@ -1806,7 +1820,12 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
    - `LegendList` is no longer exported from the `@legendapp/list/keyboard` entrypoint.
    - Chat screens can use `KeyboardAwareLegendList`, `useKeyboardScrollToEnd`, and `useKeyboardChatComposerInset` from `@legendapp/list/keyboard`.
 
-6) **Imperative scroll methods are async**
+6) **`renderItem` is a render callback**
+   - `renderItem` is called directly as `(props) => ReactNode`.
+   - Do not pass a hook-using item component directly as `renderItem={Row}`.
+   - Return hook-using item components from the callback instead: `renderItem={({ item }) => <Row item={item} />}`.
+
+7) **Imperative scroll methods are async**
    - These ref methods now return `Promise<void>`:
      - `scrollIndexIntoView`
      - `scrollItemIntoView`
@@ -1816,7 +1835,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
      - `scrollToOffset`
    - If you run logic after a programmatic scroll, `await` the call.
 
-7) **`getState()` shape changed for advanced integrations**
+8) **`getState()` shape changed for advanced integrations**
    - `state.positions` is no longer part of the public `getState()` return value.
    - Replace direct map access with:
      - `positionAtIndex(index)`
@@ -1831,6 +1850,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 - Replace `stickyIndices` with `stickyHeaderIndices`
 - Move imports to typed platform entrypoints (`/react-native` or `/react`)
 - Update keyboard imports from `@legendapp/list/keyboard-controller` to `@legendapp/list/keyboard` and use `KeyboardAwareLegendList`
+- Wrap hook-using item components in a `renderItem` callback instead of passing them directly
 - For floating composers, replace content padding workarounds with `contentInsetEndAdjustment` on web or `useKeyboardChatComposerInset` with `KeyboardAwareLegendList` on React Native
 - `await` imperative scroll calls if your code depends on post-scroll timing
 - Update advanced `getState()` consumers to use `positionAtIndex` / `positionByKey` instead of `positions`
@@ -2343,7 +2363,7 @@ npm install react-native-keyboard-controller@^1.21.7 react-native-reanimated
 <KeyboardAwareLegendList
   data={messages}
   keyExtractor={(item) => item.id}
-  renderItem={ChatMessage}
+  renderItem={({ item }) => <ChatMessage item={item} />}
   anchoredEndSpace={{ anchorIndex: messages.length - 1, anchorOffset: 16 }}
   keyboardOffset={insets.bottom}
 />
@@ -2513,7 +2533,7 @@ export function KeyboardChatExample() {
             maintainScrollAtEnd
             maintainVisibleContentPosition
             ref={listRef}
-            renderItem={ChatMessage}
+            renderItem={({ item }) => <ChatMessage item={item} />}
             style={styles.list}
           />
         </KeyboardGestureArea>

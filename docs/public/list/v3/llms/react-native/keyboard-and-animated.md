@@ -181,7 +181,7 @@ npm install react-native-keyboard-controller@^1.21.7 react-native-reanimated
 <KeyboardAwareLegendList
   data={messages}
   keyExtractor={(item) => item.id}
-  renderItem={ChatMessage}
+  renderItem={({ item }) => <ChatMessage item={item} />}
   anchoredEndSpace={{ anchorIndex: messages.length - 1, anchorOffset: 16 }}
   keyboardOffset={insets.bottom}
 />
@@ -351,7 +351,7 @@ export function KeyboardChatExample() {
             maintainScrollAtEnd
             maintainVisibleContentPosition
             ref={listRef}
-            renderItem={ChatMessage}
+            renderItem={({ item }) => <ChatMessage item={item} />}
             style={styles.list}
           />
         </KeyboardGestureArea>
