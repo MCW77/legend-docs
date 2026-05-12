@@ -1,12 +1,12 @@
 <Callout>
-These integrations are React Native only. On web, use standard DOM animation libraries or CSS transitions.
+These integrations target the React Native renderer. For DOM lists from `@legendapp/list/react`, use standard DOM animation libraries or CSS transitions. For React Native Web apps using `@legendapp/list/react-native`, the Reanimated entrypoint works with React Native Web.
 </Callout>
 
 ## Reanimated
 
 The Reanimated version of AnimatedLegendList supports animated props with Reanimated. Note that using `Animated.createAnimatedComponent` will not work as it needs more boilerplate, so you should use this instead.
 
-Under the hood, these integrations use `Reanimated.ScrollView`.
+Under the hood, this integration uses `Reanimated.ScrollView`.
 
 <Callout type="warn" title="Reanimated 4 sticky headers">
 In Reanimated 4, sticky headers can have performance problems. See <a href="https://docs.swmansion.com/react-native-reanimated/docs/guides/performance/#%EF%B8%8F-flickeringjittering-while-scrolling">Flickering/jittering while scrolling</a>.
@@ -58,7 +58,23 @@ export function ReanimatedLayoutTransitionExample() {
 
 ### sharedValues
 
-Use `sharedValues` when you want LegendList to keep external Reanimated shared values in sync with list state.
+Use `sharedValues` when you want `AnimatedLegendList` from `@legendapp/list/reanimated` to keep external Reanimated shared values in sync with list state.
+
+This is useful when a worklet, animated style, gesture, sticky overlay, or keyboard-driven UI needs to read list state without going through React state or triggering JS rerenders. You create the shared values, pass them to the list, and LegendList updates them as scroll/list state changes.
+
+```ts
+import type { SharedValue } from "react-native-reanimated";
+
+interface AnimatedLegendListSharedValues {
+  activeStickyIndex?: SharedValue<number>;
+  isAtEnd?: SharedValue<boolean>;
+  isAtStart?: SharedValue<boolean>;
+  isNearEnd?: SharedValue<boolean>;
+  isNearStart?: SharedValue<boolean>;
+  isWithinMaintainScrollAtEndThreshold?: SharedValue<boolean>;
+  scrollOffset?: SharedValue<number>;
+}
+```
 
 ```tsx
 import { useSharedValue } from "react-native-reanimated";
@@ -93,6 +109,15 @@ Supported shared values:
 - `isNearStart`
 - `isWithinMaintainScrollAtEndThreshold`
 - `scrollOffset`
+
+Notes:
+
+- `sharedValues` is only supported by `AnimatedLegendList` from `@legendapp/list/reanimated`.
+- It is not part of `@legendapp/list/animated`, which is the React Native `Animated.createAnimatedComponent` wrapper.
+- LegendList owns writes to the shared values you pass. Treat them as list-state outputs and read them from worklets, animated styles, or gesture handlers.
+- `scrollOffset` is the list's current scroll offset on the scroll axis. For horizontal lists it tracks the horizontal offset.
+- Boolean edge values use the same thresholds as the corresponding `getState()` fields.
+- If you need JS callbacks instead of shared values, use `ref.current?.getState().listen(...)`.
 
 ## Animated
 
@@ -130,107 +155,208 @@ Note that this is just a wrapper around the normal `createAnimatedComponent` so 
 const AnimatedLegendList = Animated.createAnimatedComponent(LegendList);
 ```
 
-## KeyboardAvoidingLegendList
+## KeyboardAwareLegendList
 
-Use `KeyboardAvoidingLegendList` from `@legendapp/list/keyboard` for smooth keyboard-aware scrolling and inset behavior.
-
-An experimental entrypoint is also available at `@legendapp/list/keyboard-test`. It currently uses `KeyboardChatScrollView`.
+Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for keyboard-aware scrolling, keyboard-driven insets, floating composers, and chat-style end anchoring.
 
 ```ts
-import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-test";
+import {
+  KeyboardAwareLegendList,
+  useKeyboardChatComposerInset,
+  useKeyboardScrollToEnd,
+} from "@legendapp/list/keyboard";
 ```
 
 This integration depends on `react-native-reanimated` and `react-native-keyboard-controller`.
 
+`KeyboardAwareLegendList` requires `react-native-keyboard-controller` version `1.21.7` or newer.
+
 ```npm
-npm install react-native-keyboard-controller react-native-reanimated
+npm install react-native-keyboard-controller@^1.21.7 react-native-reanimated
 ```
 
-<Callout type="warn" title="Integration guidance">
-Do not wrap `KeyboardAvoidingLegendList` inside another `KeyboardAvoidingView`.
-Let the list manage keyboard-aware behavior, and adjacent UI (like composers/inputs) should handle their own keyboard avoiding (for example with `KeyboardStickyView`).
-</Callout>
-
-<Callout title="Advanced customization">
-If your app needs more advanced keyboard-avoidance behavior, use `KeyboardAvoidingLegendList` as a starting point and adapt it for your scenario. See the source: <a href="https://github.com/LegendApp/legend-list/blob/main/src/integrations/keyboard.tsx">src/integrations/keyboard.tsx</a>.
-</Callout>
-
-## KeyboardChatLegendList
-
-Use `KeyboardChatLegendList` from `@legendapp/list/keyboard-chat` if you want a lower-level `KeyboardChatScrollView` integration with explicit `anchoredEndSpace` control.
-
-```ts
-import { KeyboardChatLegendList } from "@legendapp/list/keyboard-chat";
-```
-
-This is useful for chat apps where you want to scroll the user message to the top on send.
+`KeyboardAwareLegendList` wraps `AnimatedLegendList` from `@legendapp/list/reanimated` and uses `KeyboardChatScrollView` from `react-native-keyboard-controller` as the scroll component.
 
 ```tsx
-<KeyboardChatLegendList
+<KeyboardAwareLegendList
   data={messages}
   keyExtractor={(item) => item.id}
   renderItem={ChatMessage}
   anchoredEndSpace={{ anchorIndex: messages.length - 1, anchorOffset: 16 }}
+  keyboardOffset={insets.bottom}
 />
 ```
 
-This integration depends on `react-native-reanimated` and `react-native-keyboard-controller`.
+Useful props:
 
-```npm
-npm install react-native-keyboard-controller react-native-reanimated
+- `contentInsetEndAdjustment`: Reanimated shared value that reserves extra end inset for a floating composer.
+- `anchoredEndSpace`: reserves blank space after an anchored row, useful when sending a message that should scroll near the top of the visible area.
+- `keyboardOffset`: offset passed through to the underlying keyboard scroll view, usually your bottom safe-area inset.
+- `freeze`: optional Reanimated shared value used by keyboard-controller to pause keyboard scroll reactions during an imperative scroll.
+
+<Callout type="warn" title="Integration guidance">
+Do not wrap `KeyboardAwareLegendList` inside another `KeyboardAvoidingView`.
+Let the list manage keyboard-aware behavior, and adjacent UI (like composers/inputs) should handle their own keyboard avoiding, for example with `KeyboardStickyView`.
+</Callout>
+
+### useKeyboardChatComposerInset
+
+Use `useKeyboardChatComposerInset` when a composer is outside normal list content flow, such as a `KeyboardStickyView` or floating input bar.
+
+```ts
+function useKeyboardChatComposerInset(
+  listRef: { current: Pick<LegendListRef, "reportContentInset"> | null },
+  composerRef: { current: Pick<View, "measure"> | null },
+  initialHeight?: number
+): {
+  contentInsetEndAdjustment: SharedValue<number>;
+  onComposerLayout: (event: LayoutChangeEvent) => void;
+};
+```
+
+The hook:
+
+- creates a Reanimated shared value initialized to `initialHeight` (default `0`)
+- measures `composerRef` once on mount
+- returns `onComposerLayout`, which updates the measured height when the composer layout changes
+- writes the measured height to `contentInsetEndAdjustment`
+- reports `{ bottom: height }` to the list with `listRef.current?.reportContentInset(...)`
+
+Pass `contentInsetEndAdjustment` to `KeyboardAwareLegendList`, then attach `ref` and `onLayout` to the composer container.
+
+```tsx
+const listRef = useRef<LegendListRef>(null);
+const composerRef = useRef<View>(null);
+const { contentInsetEndAdjustment, onComposerLayout } =
+  useKeyboardChatComposerInset(listRef, composerRef, 80);
+
+<KeyboardAwareLegendList
+  ref={listRef}
+  contentInsetEndAdjustment={contentInsetEndAdjustment}
+  {...props}
+/>
+
+<KeyboardStickyView>
+  <View ref={composerRef} onLayout={onComposerLayout}>
+    <Composer />
+  </View>
+</KeyboardStickyView>
+```
+
+### useKeyboardScrollToEnd
+
+Use `useKeyboardScrollToEnd` when sending a message should dismiss the keyboard and scroll the list to the end as one coordinated action.
+
+```ts
+function useKeyboardScrollToEnd(options: {
+  listRef: { current: { scrollToEnd(params?: { animated?: boolean }): Promise<void> } | null };
+  freeze?: SharedValue<boolean>;
+}): {
+  freeze: SharedValue<boolean>;
+  scrollMessageToEnd: (options: { animated: boolean; closeKeyboard: boolean }) => Promise<void>;
+};
+```
+
+The hook:
+
+- returns a `freeze` shared value, or reuses the one you pass in
+- sets `freeze` to `true` while keyboard dismissal and `scrollToEnd` are running
+- calls `KeyboardController.dismiss()` when `closeKeyboard` is true
+- awaits the list's async `scrollToEnd({ animated })`
+- sets `freeze` back to `false` after both operations finish
+
+Pass the returned `freeze` to `KeyboardAwareLegendList` when using `scrollMessageToEnd`.
+
+```tsx
+const { freeze, scrollMessageToEnd } = useKeyboardScrollToEnd({ listRef });
+
+<KeyboardAwareLegendList
+  ref={listRef}
+  freeze={freeze}
+  {...props}
+/>
+
+requestAnimationFrame(() => {
+  scrollMessageToEnd({ animated: true, closeKeyboard: true });
+});
 ```
 
 ### Chat Example
 
+For chat screens, `KeyboardAwareLegendList` works with a few chat-specific pieces:
+
+- `KeyboardStickyView` keeps the composer attached to the keyboard while the list fills the remaining space.
+- `useKeyboardChatComposerInset` measures the composer and keeps the list's end inset in sync.
+- `useKeyboardScrollToEnd` coordinates the imperative scroll with keyboard dismissal after a message is sent.
+- `anchoredEndSpace` reserves space after the newly sent message so it can land near the top of the visible area instead of being hidden behind the composer.
+- `initialScrollAtEnd` starts the conversation at the latest message, while `maintainVisibleContentPosition` keeps the viewport stable as new rows arrive.
+
 ```tsx
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button, TextInput, View } from "react-native";
 import { KeyboardGestureArea, KeyboardProvider, KeyboardStickyView } from "react-native-keyboard-controller";
-import { useAnimatedScrollHandler } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard";
+import {
+  KeyboardAwareLegendList,
+  useKeyboardChatComposerInset,
+  useKeyboardScrollToEnd,
+} from "@legendapp/list/keyboard";
+import type { LegendListRef } from "@legendapp/list/react-native";
 
-export function KeyboardAvoidingExample() {
+export function KeyboardChatExample() {
+  const listRef = useRef<LegendListRef>(null);
+  const composerRef = useRef<View>(null);
   const [messages, setMessages] = useState(defaultChatMessages);
+  const [anchorIndex, setAnchorIndex] = useState<number | undefined>(undefined);
   const [inputText, setInputText] = useState("");
   const insets = useSafeAreaInsets();
+  const { contentInsetEndAdjustment, onComposerLayout } =
+    useKeyboardChatComposerInset(listRef, composerRef, 80);
+  const { freeze, scrollMessageToEnd } = useKeyboardScrollToEnd({ listRef });
 
   const sendMessage = () => {
     const text = inputText || "Empty message";
     if (text.trim()) {
+      // Anchor the list at the message being sent so it can scroll above the composer.
+      setAnchorIndex(messages.length);
       setMessages((messagesNew) => [
         ...messagesNew,
-        { id: String(idCounter++), sender: "user", text: text, timeStamp: Date.now() },
+        { id: String(idCounter++), sender: "user", text, timeStamp: Date.now() },
       ]);
       setInputText("");
+
+      // Wait for React to commit the new row before measuring and scrolling to the end.
+      requestAnimationFrame(() => {
+        scrollMessageToEnd({ animated: true, closeKeyboard: true });
+      });
     }
   };
-
-  const handleScroll = useAnimatedScrollHandler({
-    onScroll: (_event) => {},
-  });
 
   return (
     <KeyboardProvider>
       <View style={[styles.container, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
         <KeyboardGestureArea interpolator="ios" offset={60} style={styles.container}>
-          <KeyboardAvoidingLegendList
+          <KeyboardAwareLegendList
             alignItemsAtEnd
+            anchoredEndSpace={anchorIndex !== undefined ? { anchorIndex } : undefined}
             contentContainerStyle={styles.contentContainer}
+            contentInsetEndAdjustment={contentInsetEndAdjustment}
             data={messages}
             estimatedItemSize={80}
+            freeze={freeze}
             initialScrollAtEnd
             keyExtractor={(item) => item.id}
+            keyboardDismissMode="interactive"
+            keyboardOffset={insets.bottom}
             maintainScrollAtEnd
             maintainVisibleContentPosition
-            onScroll={handleScroll}
+            ref={listRef}
             renderItem={ChatMessage}
-            safeAreaInsetBottom={insets.bottom}
             style={styles.list}
           />
         </KeyboardGestureArea>
         <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-          <View style={styles.inputContainer}>
+          <View ref={composerRef} onLayout={onComposerLayout} style={styles.inputContainer}>
             <TextInput
               onChangeText={setInputText}
               placeholder="Type a message"

@@ -270,11 +270,11 @@ export function VirtualListComparisonExample({ showTitle = true }: { showTitle?:
     }, []);
 
     return (
-        <Shell showTitle={showTitle} title="Virtual List Comparison">
+        <Shell showTitle={showTitle} title="Library Benchmark">
             <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto pr-1">
                 <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 shadow-[0_18px_50px_rgba(0,0,0,0.2)]">
                     <div className="max-w-3xl">
-                        <h2 className="m-0 text-lg font-bold text-zinc-100">Library Comparison</h2>
+                        <h2 className="m-0 text-lg font-bold text-zinc-100">Library Benchmark</h2>
                         <p className="mb-0 mt-1 text-xs leading-5 text-zinc-400">
                             Compare Legend List against other popular React virtualization libraries under the same
                             variable-height workload.

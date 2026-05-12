@@ -21,6 +21,8 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 ### Better Scroll & Metrics APIs
 - `initialScrollAtEnd` for chat and feeds
+- `contentInsetEndAdjustment` for floating composers and overlay UI at the end of a list
+- `useKeyboardChatComposerInset` for React Native keyboard chat composers
 - `onMetricsChange` for header/footer size changes
 - `getState()` now exposes listeners, element access, and scroll velocity
 
@@ -35,9 +37,10 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
      - `maintainVisibleContentPosition={true}` to enable both `size` and `data`
      - `maintainVisibleContentPosition={false}` to disable both
 
-2) **Size callbacks argument order**
-   - `getEstimatedItemSize` is now `(item, index, type)`
+2) **Size hints and fixed-size callbacks**
    - `getFixedItemSize` is now `(item, index, type)`
+   - `getEstimatedItemSize` is deprecated. Prefer `estimatedItemSize` for initial dynamic-size hints, or `getFixedItemSize` when sizes are known exactly.
+   - `suggestEstimatedItemSize` is deprecated. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average sizes directly.
 
 3) **Sticky headers prop rename**
    - `stickyIndices` → `stickyHeaderIndices` (deprecated alias kept for now)
@@ -50,8 +53,9 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 5) **Keyboard integration entrypoint update**
    - v2 keyboard docs used `@legendapp/list/keyboard-controller` and `LegendList`.
-   - In v3 use `@legendapp/list/keyboard` and import `KeyboardAvoidingLegendList`.
+   - In v3 use `@legendapp/list/keyboard` and import `KeyboardAwareLegendList`.
    - `LegendList` is no longer exported from the `@legendapp/list/keyboard` entrypoint.
+   - Chat screens can use `KeyboardAwareLegendList`, `useKeyboardScrollToEnd`, and `useKeyboardChatComposerInset` from `@legendapp/list/keyboard`.
 
 6) **Imperative scroll methods are async**
    - These ref methods now return `Promise<void>`:
@@ -68,14 +72,17 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
    - Replace direct map access with:
      - `positionAtIndex(index)`
      - `positionByKey(key)`
-   - `getState()` now also exposes listener helpers (`listen`, `listenToPosition`) and `scrollVelocity`.
+   - `getState()` now also exposes listener helpers (`listen`, `listenToPosition`), `scrollVelocity`, and `getAverageItemSizes()`.
 
 ## Migration checklist
 
-- Update size callback signatures to `(item, index, type)`
+- Update fixed-size callback signatures to `(item, index, type)`
+- Replace `getEstimatedItemSize` with `estimatedItemSize` or `getFixedItemSize`
+- Replace `suggestEstimatedItemSize` with `getState().getAverageItemSizes()`
 - Replace `stickyIndices` with `stickyHeaderIndices`
 - Move imports to typed platform entrypoints (`/react-native` or `/react`)
-- Update keyboard imports from `@legendapp/list/keyboard-controller` to `@legendapp/list/keyboard` and use `KeyboardAvoidingLegendList`
+- Update keyboard imports from `@legendapp/list/keyboard-controller` to `@legendapp/list/keyboard` and use `KeyboardAwareLegendList`
+- For floating composers, replace content padding workarounds with `contentInsetEndAdjustment` on web or `useKeyboardChatComposerInset` with `KeyboardAwareLegendList` on React Native
 - `await` imperative scroll calls if your code depends on post-scroll timing
 - Update advanced `getState()` consumers to use `positionAtIndex` / `positionByKey` instead of `positions`
 

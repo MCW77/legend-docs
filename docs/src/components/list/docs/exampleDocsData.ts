@@ -17,19 +17,19 @@ export type ExampleDocsEntry = ExampleMeta & {
 };
 
 const sourcePaths: Record<ExampleSlug, string> = {
-    'activity-history': 'example-web/src/examples/curated/ActivityHistoryExample.tsx',
-    'ai-chat': 'example-web/src/examples/curated/AiChatExample.tsx',
-    'cards-feed': 'example-web/src/examples/curated/CardsFeedExample.tsx',
-    'chat': 'example-web/src/examples/curated/ChatExample.tsx',
-    'directory': 'example-web/src/examples/curated/DirectoryExample.tsx',
-    'gallery-grid': 'example-web/src/examples/curated/GalleryGridExample.tsx',
-    'infinite-calendar': 'example-web/src/examples/curated/InfiniteCalendarExample.tsx',
-    'media-rails': 'example-web/src/examples/curated/MediaRailsExample.tsx',
-    'notifications-inbox': 'example-web/src/examples/curated/NotificationsInboxExample.tsx',
-    'product-shelf': 'example-web/src/examples/curated/ProductShelfExample.tsx',
-    'sectioned-directory': 'example-web/src/examples/curated/SectionedDirectoryExample.tsx',
-    'virtual-list-comparison': 'example-web/src/examples/VirtualListComparison.tsx',
-    'video-feed': 'example-web/src/examples/curated/VideoFeedExample.tsx',
+    'activity-history': 'example-web/src/examples/ActivityHistoryExample.tsx',
+    'ai-chat': 'example-web/src/examples/AiChatExample.tsx',
+    'cards-feed': 'example-web/src/examples/CardsFeedExample.tsx',
+    'chat': 'example-web/src/examples/ChatExample.tsx',
+    'directory': 'example-web/src/examples/DirectoryExample.tsx',
+    'gallery-grid': 'example-web/src/examples/GalleryGridExample.tsx',
+    'infinite-calendar': 'example-web/src/examples/InfiniteCalendarExample.tsx',
+    'media-rails': 'example-web/src/examples/MediaRailsExample.tsx',
+    'notifications-inbox': 'example-web/src/examples/NotificationsInboxExample.tsx',
+    'product-shelf': 'example-web/src/examples/ProductShelfExample.tsx',
+    'sectioned-directory': 'example-web/src/examples/SectionedDirectoryExample.tsx',
+    'virtual-list-comparison': 'example-web/src/examples/LibraryBenchmarkExample.tsx',
+    'video-feed': 'example-web/src/examples/VideoFeedExample.tsx',
 };
 
 const featuresUsedBySlug: Record<ExampleSlug, ExampleFeature[]> = {
@@ -169,8 +169,8 @@ const featuresUsedBySlug: Record<ExampleSlug, ExampleFeature[]> = {
             name: 'overrideItemLayout',
         },
         {
-            description: 'to size headers differently from product cards during initial layout.',
-            name: 'getEstimatedItemSize',
+            description: 'to give the mixed grid a rough initial size before real measurements are available.',
+            name: 'estimatedItemSize',
         },
         {
             description: 'to keep section headers pinned while the mixed grid scrolls.',

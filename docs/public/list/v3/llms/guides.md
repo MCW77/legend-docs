@@ -25,6 +25,63 @@ Pitfalls:
 - Avoid `inverted`; it can cause animation and scroll edge cases.
 - Tune `maintainScrollAtEndThreshold` for your UX.
 
+## Floating Composer / Overlay Insets
+
+Use this when a composer or input bar visually covers the end of the list but should stay outside the list's normal content.
+
+```ts
+contentInsetEndAdjustment?: number;
+anchoredEndSpace?: {
+  anchorIndex: number;
+  anchorOffset?: number;
+  anchorMaxSize?: number;
+  onSizeChanged?: (size: number) => void;
+};
+```
+
+On web, measure the overlay and pass that height to `contentInsetEndAdjustment`.
+
+```tsx
+<LegendList
+  data={messages}
+  renderItem={renderMessage}
+  keyExtractor={(item) => item.id}
+  initialScrollAtEnd
+  maintainScrollAtEnd
+  anchoredEndSpace={sentIndex !== undefined ? { anchorIndex: sentIndex } : undefined}
+  contentInsetEndAdjustment={composerHeight + 24}
+/>
+```
+
+On React Native, use the keyboard-aware integration and pass the shared value returned by `useKeyboardChatComposerInset`.
+
+```tsx
+const listRef = useRef<LegendListRef>(null);
+const composerRef = useRef<View>(null);
+const { contentInsetEndAdjustment, onComposerLayout } =
+  useKeyboardChatComposerInset(listRef, composerRef);
+
+<KeyboardAwareLegendList
+  ref={listRef}
+  data={messages}
+  renderItem={renderMessage}
+  keyExtractor={(item) => item.id}
+  initialScrollAtEnd
+  contentInsetEndAdjustment={contentInsetEndAdjustment}
+/>
+
+<KeyboardStickyView>
+  <View ref={composerRef} onLayout={onComposerLayout}>
+    <Composer />
+  </View>
+</KeyboardStickyView>
+```
+
+Pitfalls:
+- Prefer `contentInsetEndAdjustment` over padding the list content when the overlay size changes dynamically.
+- Use `anchoredEndSpace` for the row you want to land near the start after sending.
+- Keep a stable `keyExtractor`; changing keys while adjusting overlay inset will discard size and position caches.
+
 ## Infinite Scrolling
 
 Use `onEndReached` for standard feeds and `onStartReached` for prepending older items.

@@ -17,15 +17,18 @@ import { LegendList } from "@legendapp/list/react";
 import { SectionList } from "@legendapp/list/section-list";
 import { AnimatedLegendList } from "@legendapp/list/animated";
 import { AnimatedLegendList as ReanimatedLegendList } from "@legendapp/list/reanimated";
-import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard";
-import { KeyboardChatLegendList } from "@legendapp/list/keyboard-chat";
-// Experimental entrypoint
-import { KeyboardAvoidingLegendList as KeyboardAvoidingLegendListExperimental } from "@legendapp/list/keyboard-test";
+import {
+  KeyboardAwareLegendList,
+  useKeyboardChatComposerInset,
+  useKeyboardScrollToEnd,
+} from "@legendapp/list/keyboard";
 ```
 
 <Callout>
 The root import (`@legendapp/list`) is still functional (they all share the same JavaScript code), but deprecated for strict typing. Prefer `@legendapp/list/react-native` and `@legendapp/list/react`.
 </Callout>
+
+See [Keyboard & Animated](../react-native/keyboard-and-animated) for Reanimated-only props such as `sharedValues` and `itemLayoutAnimation`.
 
 ## Required Props
 ___
@@ -131,6 +134,10 @@ contentContainerClassName?: string;
 Web only. Adds a `className` to the inner content div inside the scroll container.
 Use this when your app styles the content container with CSS classes instead of inline styles.
 
+<Callout title="Gap classes">
+`gap-*`, `gap-x-*`, and `gap-y-*` classes in `contentContainerClassName` are not used for LegendList item spacing because items are positioned virtually. Use `contentContainerStyle={{ gap: 16, padding: 16 }}` or `columnWrapperStyle` instead.
+</Callout>
+
 ### contentInset
 
 ```ts
@@ -170,11 +177,11 @@ Estimated size of the list viewport used as a first-render hint before actual la
 extraData?: any;
 ```
 
-Avoid this when possible.
+Avoid this when possible. `extraData` is a whole-list invalidation escape hatch, not the recommended way to pass changing item state.
 
-Changing `extraData` causes Legend List to re-render all items because the value is passed through every `renderItem` call.
+Changing `extraData` causes Legend List to re-render all items because the value is passed through every `renderItem` call. That can be expensive for large lists or frequently changing state.
 
-Prefer selecting the state each item needs inside the item itself, for example with React context or a state library selector, instead of threading shared state through the list.
+Prefer external state that each item subscribes to directly, for example React context, a state library selector, or another item-scoped subscription. Use `extraData` only when you intentionally need every rendered item to re-evaluate from the same changed value.
 
 See [React Native Docs](https://reactnative.dev/docs/flatlist#extraData).
 
@@ -185,15 +192,6 @@ dataVersion?: Key;
 ```
 
 Version token that forces the list to treat data as updated even when the array reference is stable. Increment this when mutating `data` in place.
-
-### getEstimatedItemSize
-
-```ts
-getEstimatedItemSize?: (item: ItemT, index: number, itemType?: string) => number;
-```
-
-Optional per-item performance hint for the initial layout before items are measured.
-If omitted, LegendList uses measured averages (and `estimatedItemSize` if provided). To log suggestions in development, enable [`suggestEstimatedItemSize`](#suggestestimateditemsize).
 
 ### getFixedItemSize
 
@@ -227,14 +225,6 @@ useWindowScroll?: boolean; // default: false
 
 Web only. When true, LegendList listens to window/body scrolling instead of rendering its own scrollable container.
 
-### initialContainerPoolRatio
-
-```ts
-initialContainerPoolRatio?: number; // default: 2
-```
-
-Ratio of initial container pool size to data length. The container pool is extra unallocated containers that are used in case the actual size is smaller than the estimated size. This defaults to `2` which we've found to cover most usage. If your items are a fixed size you could set it closer to `1`, or if your items or viewport can resize signficantly it may help to increase it. If the number of containers needed exceeds the pool, LegendList will allocate more containers and re-render the outer list, which may cause a frame stutter.
-
 ### initialScrollIndex
 
 ```ts
@@ -242,6 +232,8 @@ initialScrollIndex?: number | { index: number; viewOffset?: number; viewPosition
 ```
 
 Start scrolled with this item at the top (or at the provided `viewPosition`). If item sizes are dynamic, the list will adjust after measurement using the default scroll‑stabilization behavior.
+
+For large lists with a numeric `estimatedItemSize`, LegendList can seed the initial render near the target index instead of scanning from the beginning. If data arrives after mount, the initial target is re-armed and applied when items are available.
 
 ### initialScrollOffset
 
@@ -258,6 +250,8 @@ initialScrollAtEnd?: boolean; // default: false
 ```
 
 When true, the list initializes scrolled to the last item. Overrides `initialScrollIndex` and `initialScrollOffset` when data is available.
+
+This is designed for chat/feed screens and works with dynamic item measurement, async data arrival, and end-inset changes from floating composers. On iOS, LegendList waits for native initial-scroll confirmation before marking the initial scroll complete.
 
 ### itemsAreEqual
 
@@ -399,7 +393,32 @@ Keeps a chosen item visually anchored to the start by adding trailing space when
 Platform notes:
 
 - Web: available on `LegendList` from `@legendapp/list/react`.
-- React Native: use `KeyboardChatLegendList` from `@legendapp/list/keyboard-chat` for this lower-level integration.
+- React Native: use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for this lower-level integration.
+
+### contentInsetEndAdjustment
+
+```ts
+contentInsetEndAdjustment?: number;
+```
+
+Web only on `LegendList` from `@legendapp/list/react`. Adjusts the effective end inset without replacing the base `contentInset`.
+
+LegendList also renders the adjustment as real trailing DOM space, so browser scroll range, `scrollToEnd`, and end-pinned behavior stay aligned when a floating composer or overlay grows and shrinks.
+
+For React Native keyboard-aware lists, pass a Reanimated shared value to `KeyboardAwareLegendList` instead:
+
+```tsx
+const { contentInsetEndAdjustment, onComposerLayout } =
+  useKeyboardChatComposerInset(listRef, composerRef);
+
+<KeyboardAwareLegendList
+  contentInsetEndAdjustment={contentInsetEndAdjustment}
+  ref={listRef}
+  {...props}
+/>
+```
+
+Use this for floating composers, input bars, or other UI that visually covers the end of the list while remaining outside normal list content flow.
 
 ### numColumns
 
@@ -594,14 +613,6 @@ stickyHeaderIndices?: number[];
 An array of indices for items that should stick to the top of the list while scrolling. Sticky headers remain visible at the top of the viewport as you scroll past them.
 Not supported with `horizontal={true}`.
 
-### stickyIndices (deprecated)
-
-```ts
-stickyIndices?: number[];
-```
-
-Deprecated alias for `stickyHeaderIndices`.
-
 ### stickyHeaderConfig
 
 ```ts
@@ -624,14 +635,6 @@ style?: StyleProp<ViewStyle>;
 
 Style applied to the underlying ScrollView. On web this maps to the scroll container’s CSS style.
 
-### suggestEstimatedItemSize
-
-```ts
-suggestEstimatedItemSize?: boolean;
-```
-
-When enabled in development, LegendList logs suggested `estimatedItemSize` values based on measured items.
-
 ### viewabilityConfig
 
 ```ts
@@ -651,14 +654,6 @@ viewabilityConfigCallbackPairs?: ViewabilityConfigCallbackPairs | undefined;
 List of `ViewabilityConfig`/`onViewableItemsChanged` pairs. A specific `onViewableItemsChanged` will be called when its corresponding `ViewabilityConfig`'s conditions are met.
 
 See [React Native Docs](https://reactnative.dev/docs/flatlist#viewabilityconfigcallbackpairs).
-
-### waitForInitialLayout
-
-```ts
-waitForInitialLayout?: boolean; // default true
-```
-
-If true, delays rendering until initial layout is complete
 
 <br />
 
@@ -793,7 +788,7 @@ scrollToIndex(params: {
 }): Promise<void>;
 ```
 
-Scrolls to the item at the specified index. For the most accurate results, provide good size estimates via [getEstimatedItemSize](#getestimateditemsize) or [getFixedItemSize](#getfixeditemsize). Size stabilization is enabled by default for dynamic items.
+Scrolls to the item at the specified index. For the most accurate results, provide `estimatedItemSize` for dynamic rows or [getFixedItemSize](#getfixeditemsize) for truly fixed-size rows. Size stabilization is enabled by default for dynamic items.
 Returns a promise that resolves when the imperative scroll finishes (or immediately if no scroll was needed).
 
 ### scrollToOffset
@@ -1154,7 +1149,7 @@ export function ItemComponent({ item }) {
 
 `getState()` is a function on `LegendListRef`, accessed as `ref.current?.getState()`. See its entry in [Ref Methods](#ref-method-getstate).
 
-This is likely not necessary in most apps, but can power advanced functionality and customization. It is used by [KeyboardAvoidingLegendList](../react-native/keyboard-and-animated#keyboardavoidinglegendlist) for example.
+This is likely not necessary in most apps, but can power advanced functionality and customization. It is used by [KeyboardAwareLegendList](../react-native/keyboard-and-animated#keyboardawarelegendlist) for example.
 
 ### LegendListState type
 
@@ -1173,6 +1168,7 @@ type LegendListState = {
   isEndReached: boolean;
   isStartReached: boolean;
   isWithinMaintainScrollAtEndThreshold: boolean;
+  getAverageItemSizes: () => Record<string, LegendListAverageItemSize>;
   listen: <T extends LegendListListenerType>(
     listenerType: T,
     callback: (value: ListenerTypeValueMap[T]) => void
@@ -1188,6 +1184,11 @@ type LegendListState = {
   start: number;
   startBuffered: number;
 };
+
+type LegendListAverageItemSize = {
+  average: number;
+  count: number;
+};
 ```
 
 ### Fields and Methods
@@ -1196,6 +1197,7 @@ type LegendListState = {
 - `contentLength`: content size of the list including header/footer/insets
 - `data`: current data array reference used by the list
 - `elementAtIndex(index)`: rendered native element for an index (if currently mapped to a container)
+- `getAverageItemSizes()`: measured average item sizes grouped by item type. Use this to inspect real sizing data and tune `estimatedItemSize` after rows have been measured.
 - `start` / `end`: visible range bounds without buffer
 - `startBuffered` / `endBuffered`: virtualized range bounds including draw buffer
 - `isAtStart` / `isAtEnd`: threshold-based booleans for edge-of-list state
@@ -1217,8 +1219,14 @@ type LegendListState = {
 `listen` supports these channel names:
 
 - `activeStickyIndex` (`number`)
+- `anchoredEndSpaceSize` (`number`)
 - `footerSize` (`number`)
 - `headerSize` (`number`)
+- `isAtEnd` (`boolean`)
+- `isAtStart` (`boolean`)
+- `isNearEnd` (`boolean`)
+- `isNearStart` (`boolean`)
+- `isWithinMaintainScrollAtEndThreshold` (`boolean`)
 - `lastItemKeys` (`string[]`)
 - `lastPositionUpdate` (`number`)
 - `numContainers` (`number`)
@@ -1234,6 +1242,7 @@ type LegendListState = {
 - `positionByKey` can return `undefined` if a key is unknown or not measured yet.
 - `elementAtIndex` can return `null`/`undefined` when the item is not currently rendered.
 - `sizes` is a live `Map` reference that updates as list state changes.
+- `getAverageItemSizes()` only reports types that have measured items. Items without a `getItemType` value are grouped under `default`.
 
 ### Examples
 
@@ -1303,6 +1312,71 @@ function PositionListenerExample() {
 }
 ```
 
+```tsx
+import { useEffect, useRef } from "react";
+import { LegendList, type LegendListRef } from "@legendapp/list/react-native";
+
+function AverageSizeExample() {
+  const ref = useRef<LegendListRef>(null);
+
+  useEffect(() => {
+    const state = ref.current?.getState();
+    if (!state) return;
+
+    const unsubscribe = state.listen("lastPositionUpdate", () => {
+      console.log("average item sizes", state.getAverageItemSizes());
+    });
+
+    return unsubscribe;
+  }, []);
+
+  return <LegendList ref={ref} data={data} renderItem={renderItem} />;
+}
+```
+
+<br />
+
+## Deprecated APIs
+
+These APIs are deprecated or compatibility-only; new code should avoid them.
+
+### suggestEstimatedItemSize (deprecated)
+
+```ts
+suggestEstimatedItemSize?: boolean;
+```
+
+Deprecated development logging prop. Use `ref.current?.getState().getAverageItemSizes()` to inspect the measured average item sizes directly, then tune `estimatedItemSize` or add `getFixedItemSize` where sizes are exact.
+
+### getEstimatedItemSize (deprecated)
+
+```ts
+getEstimatedItemSize?: (item: ItemT, index: number, itemType?: string) => number;
+```
+
+Deprecated per-item estimate function. Prefer:
+
+- `estimatedItemSize` when a single rough initial estimate is enough
+- `getFixedItemSize` when item sizes are known exactly
+
+`getEstimatedItemSize` still works, but it prevents LegendList from switching to measured averages for unmeasured items of the same type. In most dynamic-size lists, a single `estimatedItemSize` plus measured averages is the preferred path.
+
+### initialContainerPoolRatio (deprecated)
+
+```ts
+initialContainerPoolRatio?: number;
+```
+
+Deprecated container-pool tuning escape hatch. LegendList now manages spare container capacity automatically, so new code should leave this unset.
+
+### stickyIndices (deprecated)
+
+```ts
+stickyIndices?: number[];
+```
+
+Deprecated alias for `stickyHeaderIndices`. Use `stickyHeaderIndices` for React Native prop parity.
+
 <br />
 
 
@@ -1334,6 +1408,63 @@ maintainScrollAtEndThreshold?: number;
 Pitfalls:
 - Avoid `inverted`; it can cause animation and scroll edge cases.
 - Tune `maintainScrollAtEndThreshold` for your UX.
+
+## Floating Composer / Overlay Insets
+
+Use this when a composer or input bar visually covers the end of the list but should stay outside the list's normal content.
+
+```ts
+contentInsetEndAdjustment?: number;
+anchoredEndSpace?: {
+  anchorIndex: number;
+  anchorOffset?: number;
+  anchorMaxSize?: number;
+  onSizeChanged?: (size: number) => void;
+};
+```
+
+On web, measure the overlay and pass that height to `contentInsetEndAdjustment`.
+
+```tsx
+<LegendList
+  data={messages}
+  renderItem={renderMessage}
+  keyExtractor={(item) => item.id}
+  initialScrollAtEnd
+  maintainScrollAtEnd
+  anchoredEndSpace={sentIndex !== undefined ? { anchorIndex: sentIndex } : undefined}
+  contentInsetEndAdjustment={composerHeight + 24}
+/>
+```
+
+On React Native, use the keyboard-aware integration and pass the shared value returned by `useKeyboardChatComposerInset`.
+
+```tsx
+const listRef = useRef<LegendListRef>(null);
+const composerRef = useRef<View>(null);
+const { contentInsetEndAdjustment, onComposerLayout } =
+  useKeyboardChatComposerInset(listRef, composerRef);
+
+<KeyboardAwareLegendList
+  ref={listRef}
+  data={messages}
+  renderItem={renderMessage}
+  keyExtractor={(item) => item.id}
+  initialScrollAtEnd
+  contentInsetEndAdjustment={contentInsetEndAdjustment}
+/>
+
+<KeyboardStickyView>
+  <View ref={composerRef} onLayout={onComposerLayout}>
+    <Composer />
+  </View>
+</KeyboardStickyView>
+```
+
+Pitfalls:
+- Prefer `contentInsetEndAdjustment` over padding the list content when the overlay size changes dynamically.
+- Use `anchoredEndSpace` for the row you want to land near the start after sending.
+- Keep a stable `keyExtractor`; changing keys while adjusting overlay inset will discard size and position caches.
 
 ## Infinite Scrolling
 
@@ -1454,6 +1585,8 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 ### Better Scroll & Metrics APIs
 - `initialScrollAtEnd` for chat and feeds
+- `contentInsetEndAdjustment` for floating composers and overlay UI at the end of a list
+- `useKeyboardChatComposerInset` for React Native keyboard chat composers
 - `onMetricsChange` for header/footer size changes
 - `getState()` now exposes listeners, element access, and scroll velocity
 
@@ -1468,9 +1601,10 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
      - `maintainVisibleContentPosition={true}` to enable both `size` and `data`
      - `maintainVisibleContentPosition={false}` to disable both
 
-2) **Size callbacks argument order**
-   - `getEstimatedItemSize` is now `(item, index, type)`
+2) **Size hints and fixed-size callbacks**
    - `getFixedItemSize` is now `(item, index, type)`
+   - `getEstimatedItemSize` is deprecated. Prefer `estimatedItemSize` for initial dynamic-size hints, or `getFixedItemSize` when sizes are known exactly.
+   - `suggestEstimatedItemSize` is deprecated. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average sizes directly.
 
 3) **Sticky headers prop rename**
    - `stickyIndices` → `stickyHeaderIndices` (deprecated alias kept for now)
@@ -1483,8 +1617,9 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 5) **Keyboard integration entrypoint update**
    - v2 keyboard docs used `@legendapp/list/keyboard-controller` and `LegendList`.
-   - In v3 use `@legendapp/list/keyboard` and import `KeyboardAvoidingLegendList`.
+   - In v3 use `@legendapp/list/keyboard` and import `KeyboardAwareLegendList`.
    - `LegendList` is no longer exported from the `@legendapp/list/keyboard` entrypoint.
+   - Chat screens can use `KeyboardAwareLegendList`, `useKeyboardScrollToEnd`, and `useKeyboardChatComposerInset` from `@legendapp/list/keyboard`.
 
 6) **Imperative scroll methods are async**
    - These ref methods now return `Promise<void>`:
@@ -1501,14 +1636,17 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
    - Replace direct map access with:
      - `positionAtIndex(index)`
      - `positionByKey(key)`
-   - `getState()` now also exposes listener helpers (`listen`, `listenToPosition`) and `scrollVelocity`.
+   - `getState()` now also exposes listener helpers (`listen`, `listenToPosition`), `scrollVelocity`, and `getAverageItemSizes()`.
 
 ## Migration checklist
 
-- Update size callback signatures to `(item, index, type)`
+- Update fixed-size callback signatures to `(item, index, type)`
+- Replace `getEstimatedItemSize` with `estimatedItemSize` or `getFixedItemSize`
+- Replace `suggestEstimatedItemSize` with `getState().getAverageItemSizes()`
 - Replace `stickyIndices` with `stickyHeaderIndices`
 - Move imports to typed platform entrypoints (`/react-native` or `/react`)
-- Update keyboard imports from `@legendapp/list/keyboard-controller` to `@legendapp/list/keyboard` and use `KeyboardAvoidingLegendList`
+- Update keyboard imports from `@legendapp/list/keyboard-controller` to `@legendapp/list/keyboard` and use `KeyboardAwareLegendList`
+- For floating composers, replace content padding workarounds with `contentInsetEndAdjustment` on web or `useKeyboardChatComposerInset` with `KeyboardAwareLegendList` on React Native
 - `await` imperative scroll calls if your code depends on post-scroll timing
 - Update advanced `getState()` consumers to use `positionAtIndex` / `positionByKey` instead of `positions`
 
@@ -1521,18 +1659,18 @@ npm install @legendapp/list@beta
 
 ## overview
 
-Legend List is a high‑performance, virtualized list for **React Native and Web**. It’s a drop‑in replacement for FlatList/FlashList on mobile and a fast, DOM‑native list on the web.
+Legend List is a high-performance virtualized list for **React Native and React DOM**. It is a drop-in replacement for FlatList/FlashList on React Native, and a DOM-native virtual list on the web.
 
-Compared to FlatList and FlashList, it's faster, simpler, and supports dynamic item sizes without hacks on React Native.
+Version 3 is a full cross-platform list system, not just a mobile list with a web adapter. It shares the same virtualization core across renderers while exposing typed entrypoints for each platform.
 
-- ✨ Extremely fast
-- ✨ Dynamic item sizes
-- ✨ Optional recycling
-- ✨ Bidirectional infinite lists
-- ✨ Chat list without inverting
-- ✨ Maintain content view position
-- ✨ Recycling hooks
-- 🧲 Sticky headers and SectionList support
+- ✨ Fast dynamic-size virtualization
+- ✨ Accurate `initialScrollIndex` and `initialScrollAtEnd`
+- ✨ Chat and AI chat without inverted lists
+- ✨ Bidirectional infinite lists with scroll anchoring
+- ✨ Floating composer and overlay inset support
+- ✨ Optional item recycling with recycling-aware hooks
+- 🧲 Sticky headers, SectionList, and always-mounted rows
+- 🌐 React Native and DOM-native React support
 
 For more information, check out:
 - [Legend List: Optimizing for Mobile & Web | React Universe Conf 2025](https://www.youtube.com/watch?v=Ui3qVl80Pzg)
@@ -1566,8 +1704,60 @@ A FlashLight measurement of the above test shows that LegendList uses less CPU w
 
 ## Choose your platform
 
-- **React Native** → [Getting Started (React Native)](../react-native/getting-started)
-- **Web** → [Getting Started (Web)](../react/getting-started)
+- **React Native** → import from `@legendapp/list/react-native` and start with [Getting Started (React Native)](../react-native/getting-started).
+- **React (Web)** → import from `@legendapp/list/react` and start with [Getting Started (Web)](../react/getting-started).
+- **React Native Web** → use the React Native entrypoint so your app keeps React Native component semantics.
+
+The root import (`@legendapp/list`) still works, and all of these imports run the same JS, but each import has platform-specific types.
+
+## Built for Chat and Feeds
+
+Legend List has first-class primitives for timelines that grow at both ends:
+
+- `initialScrollAtEnd` starts at the newest item without rendering the whole history first.
+- `initialScrollIndex` supports target indices with `viewOffset` and `viewPosition`.
+- `maintainScrollAtEnd` follows new messages while the user is already near the end.
+- `maintainVisibleContentPosition` keeps the current viewport stable during prepends and size changes.
+- `onStartReached` and `onEndReached` support bidirectional pagination.
+
+For floating composers and AI chat UIs, `contentInsetEndAdjustment` reserves real end space on web, and `KeyboardAwareLegendList` plus `useKeyboardChatComposerInset` do the same for React Native keyboard-driven layouts.
+
+See [Guides](../guides#chat-interfaces) and [Keyboard & Animated](../react-native/keyboard-and-animated#keyboardawarelegendlist).
+
+## Dynamic Layout Without Guesswork
+
+Items can have dynamic heights by default. You can add hints when you have them:
+
+- `estimatedItemSize` for a single rough estimate
+- `getFixedItemSize` for fixed-size rows that do not need measuring
+- `getItemType` to pool recycled items and size averages by item type
+- `onItemSizeChanged` and `getState().getAverageItemSizes()` to tune estimates from real measurements
+
+For large initial scroll targets, v3 can seed the initial render near the requested target instead of walking every item from the beginning when the list has enough information to do so.
+
+## Web Support
+
+The `@legendapp/list/react` entrypoint renders DOM elements directly, with no React Native dependency required. It supports:
+
+- `useWindowScroll` for pages that scroll at the document level
+- CSS `style`, `contentContainerStyle`, and `contentContainerClassName`
+- `contentInsetEndAdjustment` as real trailing DOM space for overlays
+- the same core scroll, measurement, recycling, and viewability behavior as React Native
+
+See the [web examples](../react/examples) for product-style examples and source fixtures.
+
+## Advanced List Features
+
+Legend List v3 also includes:
+
+- `SectionList` from `@legendapp/list/section-list`, with sticky section headers and `scrollToLocation`
+- `stickyHeaderIndices` with `stickyHeaderConfig`
+- `alwaysRender` for keeping top, bottom, explicit index, or key-based rows mounted
+- `numColumns` and `overrideItemLayout` for grid-style lists with spanning items
+- `dataVersion` and `itemsAreEqual` for mutable data or semantic equality checks
+- `viewabilityConfig`, `viewabilityConfigCallbackPairs`, `useViewability`, and `useViewabilityAmount`
+- async imperative ref methods like `scrollToIndex`, `scrollToEnd`, and `scrollToOffset`
+- `getState()`, listener helpers, scroll metrics, and `clearCaches` for advanced integrations
 
 ## What’s new in v3
 
@@ -1575,6 +1765,10 @@ A FlashLight measurement of the above test shows that LegendList uses less CPU w
 - SectionList component (`@legendapp/list/section-list`)
 - `alwaysRender` for keeping selected items mounted
 - New `maintainVisibleContentPosition` configuration
+- `initialScrollAtEnd` and improved initial-scroll targeting
+- `contentInsetEndAdjustment` for floating composers and overlay UI
+- `KeyboardAwareLegendList` and `useKeyboardChatComposerInset`
+- Expanded `getState()` and async ref methods
 - `stickyHeaderIndices` (with `stickyIndices` deprecated)
 
 Read the full change summary in [Migration to v3](../migration).
@@ -1584,7 +1778,7 @@ Read the full change summary in [Migration to v3](../migration).
 
 Legend List is very optimized by default, so it may already be working well without any configuration. But these are some common ways to improve your list behavior.
 
-`estimatedItemSize` and `getEstimatedItemSize` are optional optimizations.
+`estimatedItemSize` and `getFixedItemSize` are optional optimizations.
 Legend List works without them. If you provide them, they can reduce mount-time work by helping Legend List allocate a viewport-sized set of items more accurately before real measurements are available. If you omit them, Legend List falls back to measured averages and a default initial estimate of `100px`.
 
 The `onItemSizeChanged` event can also help with your estimations - it will be called whenever an item's size changes. So you can use it to log what the actual rendered size is to adjust your estimates.
@@ -1617,21 +1811,21 @@ So there are some tradeoffs with recycling:
 extraData?: any;
 ```
 
-Avoid `extraData` when possible.
+Avoid `extraData` when possible. It is a whole-list invalidation escape hatch, not the recommended way to pass changing item state.
 
-Changing `extraData` causes Legend List to re-render all items because the value is passed through every `renderItem` call. This is convenient, but it pushes shared state changes through the whole list.
+Changing `extraData` causes Legend List to re-render all items because the value is passed through every `renderItem` call. This is convenient, but it pushes shared state changes through the whole list and can become expensive for large lists or frequently changing state.
 
-Prefer reading the state each item needs inside the item itself:
+Prefer external state that each item reads or subscribes to directly:
 
 - Use React context when the state is naturally scoped that way.
 - Use a state library selector so each item subscribes only to the values it needs.
 - Avoid passing frequently changing shared state through the list just to reach `renderItem`.
+- Use `extraData` only when you intentionally need every rendered item to re-evaluate from the same changed value.
 
 ### Estimate Item Sizes
 
 ```ts
 estimatedItemSize?: number;
-getEstimatedItemSize?: (item: T, index: number, itemType?: string) => number;
 getFixedItemSize?: (item: T, index: number, itemType?: string) => number | undefined;
 onItemSizeChanged?: (info: {
         size: number;
@@ -1644,18 +1838,27 @@ onItemSizeChanged?: (info: {
 
 If your list elements are a fixed size, then use `getFixedItemSize` to skip all of the work of measuring and adjusting items.
 
-Use `estimatedItemSize` or `getEstimatedItemSize` only if you want to optimize the first render. They are not required for correctness.
+Use `estimatedItemSize` only if you want to optimize the first render. It is not required for correctness.
 
-Providing accurate item size estimates helps determine the number of containers to allocate, based on screen size / estimatedItemSize. `estimatedItemSize` is used only for the first render, then Legend List switches to using the average of actually rendered item sizes. If you provide `getEstimatedItemSize`, it will use that function instead of averages. The more accurate your initial estimates, the less extra mount-time work Legend List needs to do before measurements arrive.
+Providing an accurate item size estimate helps determine the number of containers to allocate, based on screen size / `estimatedItemSize`. `estimatedItemSize` is used only for the first render, then Legend List switches to using the average of actually rendered item sizes. The more accurate your initial estimate, the less extra mount-time work Legend List needs to do before measurements arrive.
 
 As a rule of thumb:
 
 - Use `getFixedItemSize` when item sizes are truly fixed.
-- Use `estimatedItemSize` when most items are roughly the same size.
-- Use `getEstimatedItemSize` when item sizes vary and you can predict them reasonably well.
+- Use `estimatedItemSize` when items are dynamic but roughly predictable.
 - Skip all of them if the default behavior already looks good enough.
 
-Use `onItemSizeChanged` to log actual vs estimated sizes and improve your estimates over time. It's generally better to slightly underestimate than overestimate item sizes. Without estimates, Legend List defaults to 100px, which can make the initial container allocation less efficient until real measurements are collected.
+Use `getState().getAverageItemSizes()` after rows have measured to inspect the current measured averages by item type:
+
+```ts
+ref.current?.getState().getAverageItemSizes();
+```
+
+For per-row diagnostics, use `onItemSizeChanged` to log actual size changes. It's generally better to slightly underestimate than overestimate item sizes. Without estimates, Legend List defaults to 100px, which can make the initial container allocation less efficient until real measurements are collected.
+
+<Callout>
+`getEstimatedItemSize` and `suggestEstimatedItemSize` are deprecated. Prefer a single `estimatedItemSize` for initial size hints, `getFixedItemSize` when item sizes are known exactly, and `getState().getAverageItemSizes()` when you want measured averages.
+</Callout>
 
 ### Keep Specific Items Mounted
 
@@ -1674,15 +1877,6 @@ drawDistance?: number // default: 250
 The `drawDistance` (defaults to `250`) is the buffer size in pixels above and below the viewport that will be rendered in advance. So for example if your screen is `2000px` tall and your draw distance is `1000`, then it will render double your screen size, from `-1000px` above the viewport to `1000px` below the viewport.
 
 This can help reduce the amount of blank space while scrolling quickly. But if your items are computationally expensive, it may reduce performance because more items are rendering at once. So you should experiment with it to find the most optimal behavior for your app.
-
-
-### Set `waitForInitialLayout` Prop
-
-```ts
-waitForInitialLayout?: boolean // default: true
-```
-
-If the size of your list items differs significantly from the estimate, you may see a layout jump after the first render. If so, the `waitForInitialLayout` prop solves that by delaying displaying list items by one frame so they start at the correct position. But, if you have fixed sized items then you may not want to disable it to avoid waiting a frame.
 
 
 ## react-native/getting-started
@@ -1780,14 +1974,14 @@ Legend Kit is our early but growing collection of high performance headless comp
 ## react-native/keyboard-and-animated
 
 <Callout>
-These integrations are React Native only. On web, use standard DOM animation libraries or CSS transitions.
+These integrations target the React Native renderer. For DOM lists from `@legendapp/list/react`, use standard DOM animation libraries or CSS transitions. For React Native Web apps using `@legendapp/list/react-native`, the Reanimated entrypoint works with React Native Web.
 </Callout>
 
 ## Reanimated
 
 The Reanimated version of AnimatedLegendList supports animated props with Reanimated. Note that using `Animated.createAnimatedComponent` will not work as it needs more boilerplate, so you should use this instead.
 
-Under the hood, these integrations use `Reanimated.ScrollView`.
+Under the hood, this integration uses `Reanimated.ScrollView`.
 
 <Callout type="warn" title="Reanimated 4 sticky headers">
 In Reanimated 4, sticky headers can have performance problems. See <a href="https://docs.swmansion.com/react-native-reanimated/docs/guides/performance/#%EF%B8%8F-flickeringjittering-while-scrolling">Flickering/jittering while scrolling</a>.
@@ -1839,7 +2033,23 @@ export function ReanimatedLayoutTransitionExample() {
 
 ### sharedValues
 
-Use `sharedValues` when you want LegendList to keep external Reanimated shared values in sync with list state.
+Use `sharedValues` when you want `AnimatedLegendList` from `@legendapp/list/reanimated` to keep external Reanimated shared values in sync with list state.
+
+This is useful when a worklet, animated style, gesture, sticky overlay, or keyboard-driven UI needs to read list state without going through React state or triggering JS rerenders. You create the shared values, pass them to the list, and LegendList updates them as scroll/list state changes.
+
+```ts
+import type { SharedValue } from "react-native-reanimated";
+
+interface AnimatedLegendListSharedValues {
+  activeStickyIndex?: SharedValue<number>;
+  isAtEnd?: SharedValue<boolean>;
+  isAtStart?: SharedValue<boolean>;
+  isNearEnd?: SharedValue<boolean>;
+  isNearStart?: SharedValue<boolean>;
+  isWithinMaintainScrollAtEndThreshold?: SharedValue<boolean>;
+  scrollOffset?: SharedValue<number>;
+}
+```
 
 ```tsx
 import { useSharedValue } from "react-native-reanimated";
@@ -1874,6 +2084,15 @@ Supported shared values:
 - `isNearStart`
 - `isWithinMaintainScrollAtEndThreshold`
 - `scrollOffset`
+
+Notes:
+
+- `sharedValues` is only supported by `AnimatedLegendList` from `@legendapp/list/reanimated`.
+- It is not part of `@legendapp/list/animated`, which is the React Native `Animated.createAnimatedComponent` wrapper.
+- LegendList owns writes to the shared values you pass. Treat them as list-state outputs and read them from worklets, animated styles, or gesture handlers.
+- `scrollOffset` is the list's current scroll offset on the scroll axis. For horizontal lists it tracks the horizontal offset.
+- Boolean edge values use the same thresholds as the corresponding `getState()` fields.
+- If you need JS callbacks instead of shared values, use `ref.current?.getState().listen(...)`.
 
 ## Animated
 
@@ -1911,107 +2130,208 @@ Note that this is just a wrapper around the normal `createAnimatedComponent` so 
 const AnimatedLegendList = Animated.createAnimatedComponent(LegendList);
 ```
 
-## KeyboardAvoidingLegendList
+## KeyboardAwareLegendList
 
-Use `KeyboardAvoidingLegendList` from `@legendapp/list/keyboard` for smooth keyboard-aware scrolling and inset behavior.
-
-An experimental entrypoint is also available at `@legendapp/list/keyboard-test`. It currently uses `KeyboardChatScrollView`.
+Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for keyboard-aware scrolling, keyboard-driven insets, floating composers, and chat-style end anchoring.
 
 ```ts
-import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-test";
+import {
+  KeyboardAwareLegendList,
+  useKeyboardChatComposerInset,
+  useKeyboardScrollToEnd,
+} from "@legendapp/list/keyboard";
 ```
 
 This integration depends on `react-native-reanimated` and `react-native-keyboard-controller`.
 
+`KeyboardAwareLegendList` requires `react-native-keyboard-controller` version `1.21.7` or newer.
+
 ```npm
-npm install react-native-keyboard-controller react-native-reanimated
+npm install react-native-keyboard-controller@^1.21.7 react-native-reanimated
 ```
 
-<Callout type="warn" title="Integration guidance">
-Do not wrap `KeyboardAvoidingLegendList` inside another `KeyboardAvoidingView`.
-Let the list manage keyboard-aware behavior, and adjacent UI (like composers/inputs) should handle their own keyboard avoiding (for example with `KeyboardStickyView`).
-</Callout>
-
-<Callout title="Advanced customization">
-If your app needs more advanced keyboard-avoidance behavior, use `KeyboardAvoidingLegendList` as a starting point and adapt it for your scenario. See the source: <a href="https://github.com/LegendApp/legend-list/blob/main/src/integrations/keyboard.tsx">src/integrations/keyboard.tsx</a>.
-</Callout>
-
-## KeyboardChatLegendList
-
-Use `KeyboardChatLegendList` from `@legendapp/list/keyboard-chat` if you want a lower-level `KeyboardChatScrollView` integration with explicit `anchoredEndSpace` control.
-
-```ts
-import { KeyboardChatLegendList } from "@legendapp/list/keyboard-chat";
-```
-
-This is useful for chat apps where you want to scroll the user message to the top on send.
+`KeyboardAwareLegendList` wraps `AnimatedLegendList` from `@legendapp/list/reanimated` and uses `KeyboardChatScrollView` from `react-native-keyboard-controller` as the scroll component.
 
 ```tsx
-<KeyboardChatLegendList
+<KeyboardAwareLegendList
   data={messages}
   keyExtractor={(item) => item.id}
   renderItem={ChatMessage}
   anchoredEndSpace={{ anchorIndex: messages.length - 1, anchorOffset: 16 }}
+  keyboardOffset={insets.bottom}
 />
 ```
 
-This integration depends on `react-native-reanimated` and `react-native-keyboard-controller`.
+Useful props:
 
-```npm
-npm install react-native-keyboard-controller react-native-reanimated
+- `contentInsetEndAdjustment`: Reanimated shared value that reserves extra end inset for a floating composer.
+- `anchoredEndSpace`: reserves blank space after an anchored row, useful when sending a message that should scroll near the top of the visible area.
+- `keyboardOffset`: offset passed through to the underlying keyboard scroll view, usually your bottom safe-area inset.
+- `freeze`: optional Reanimated shared value used by keyboard-controller to pause keyboard scroll reactions during an imperative scroll.
+
+<Callout type="warn" title="Integration guidance">
+Do not wrap `KeyboardAwareLegendList` inside another `KeyboardAvoidingView`.
+Let the list manage keyboard-aware behavior, and adjacent UI (like composers/inputs) should handle their own keyboard avoiding, for example with `KeyboardStickyView`.
+</Callout>
+
+### useKeyboardChatComposerInset
+
+Use `useKeyboardChatComposerInset` when a composer is outside normal list content flow, such as a `KeyboardStickyView` or floating input bar.
+
+```ts
+function useKeyboardChatComposerInset(
+  listRef: { current: Pick<LegendListRef, "reportContentInset"> | null },
+  composerRef: { current: Pick<View, "measure"> | null },
+  initialHeight?: number
+): {
+  contentInsetEndAdjustment: SharedValue<number>;
+  onComposerLayout: (event: LayoutChangeEvent) => void;
+};
+```
+
+The hook:
+
+- creates a Reanimated shared value initialized to `initialHeight` (default `0`)
+- measures `composerRef` once on mount
+- returns `onComposerLayout`, which updates the measured height when the composer layout changes
+- writes the measured height to `contentInsetEndAdjustment`
+- reports `{ bottom: height }` to the list with `listRef.current?.reportContentInset(...)`
+
+Pass `contentInsetEndAdjustment` to `KeyboardAwareLegendList`, then attach `ref` and `onLayout` to the composer container.
+
+```tsx
+const listRef = useRef<LegendListRef>(null);
+const composerRef = useRef<View>(null);
+const { contentInsetEndAdjustment, onComposerLayout } =
+  useKeyboardChatComposerInset(listRef, composerRef, 80);
+
+<KeyboardAwareLegendList
+  ref={listRef}
+  contentInsetEndAdjustment={contentInsetEndAdjustment}
+  {...props}
+/>
+
+<KeyboardStickyView>
+  <View ref={composerRef} onLayout={onComposerLayout}>
+    <Composer />
+  </View>
+</KeyboardStickyView>
+```
+
+### useKeyboardScrollToEnd
+
+Use `useKeyboardScrollToEnd` when sending a message should dismiss the keyboard and scroll the list to the end as one coordinated action.
+
+```ts
+function useKeyboardScrollToEnd(options: {
+  listRef: { current: { scrollToEnd(params?: { animated?: boolean }): Promise<void> } | null };
+  freeze?: SharedValue<boolean>;
+}): {
+  freeze: SharedValue<boolean>;
+  scrollMessageToEnd: (options: { animated: boolean; closeKeyboard: boolean }) => Promise<void>;
+};
+```
+
+The hook:
+
+- returns a `freeze` shared value, or reuses the one you pass in
+- sets `freeze` to `true` while keyboard dismissal and `scrollToEnd` are running
+- calls `KeyboardController.dismiss()` when `closeKeyboard` is true
+- awaits the list's async `scrollToEnd({ animated })`
+- sets `freeze` back to `false` after both operations finish
+
+Pass the returned `freeze` to `KeyboardAwareLegendList` when using `scrollMessageToEnd`.
+
+```tsx
+const { freeze, scrollMessageToEnd } = useKeyboardScrollToEnd({ listRef });
+
+<KeyboardAwareLegendList
+  ref={listRef}
+  freeze={freeze}
+  {...props}
+/>
+
+requestAnimationFrame(() => {
+  scrollMessageToEnd({ animated: true, closeKeyboard: true });
+});
 ```
 
 ### Chat Example
 
+For chat screens, `KeyboardAwareLegendList` works with a few chat-specific pieces:
+
+- `KeyboardStickyView` keeps the composer attached to the keyboard while the list fills the remaining space.
+- `useKeyboardChatComposerInset` measures the composer and keeps the list's end inset in sync.
+- `useKeyboardScrollToEnd` coordinates the imperative scroll with keyboard dismissal after a message is sent.
+- `anchoredEndSpace` reserves space after the newly sent message so it can land near the top of the visible area instead of being hidden behind the composer.
+- `initialScrollAtEnd` starts the conversation at the latest message, while `maintainVisibleContentPosition` keeps the viewport stable as new rows arrive.
+
 ```tsx
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button, TextInput, View } from "react-native";
 import { KeyboardGestureArea, KeyboardProvider, KeyboardStickyView } from "react-native-keyboard-controller";
-import { useAnimatedScrollHandler } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard";
+import {
+  KeyboardAwareLegendList,
+  useKeyboardChatComposerInset,
+  useKeyboardScrollToEnd,
+} from "@legendapp/list/keyboard";
+import type { LegendListRef } from "@legendapp/list/react-native";
 
-export function KeyboardAvoidingExample() {
+export function KeyboardChatExample() {
+  const listRef = useRef<LegendListRef>(null);
+  const composerRef = useRef<View>(null);
   const [messages, setMessages] = useState(defaultChatMessages);
+  const [anchorIndex, setAnchorIndex] = useState<number | undefined>(undefined);
   const [inputText, setInputText] = useState("");
   const insets = useSafeAreaInsets();
+  const { contentInsetEndAdjustment, onComposerLayout } =
+    useKeyboardChatComposerInset(listRef, composerRef, 80);
+  const { freeze, scrollMessageToEnd } = useKeyboardScrollToEnd({ listRef });
 
   const sendMessage = () => {
     const text = inputText || "Empty message";
     if (text.trim()) {
+      // Anchor the list at the message being sent so it can scroll above the composer.
+      setAnchorIndex(messages.length);
       setMessages((messagesNew) => [
         ...messagesNew,
-        { id: String(idCounter++), sender: "user", text: text, timeStamp: Date.now() },
+        { id: String(idCounter++), sender: "user", text, timeStamp: Date.now() },
       ]);
       setInputText("");
+
+      // Wait for React to commit the new row before measuring and scrolling to the end.
+      requestAnimationFrame(() => {
+        scrollMessageToEnd({ animated: true, closeKeyboard: true });
+      });
     }
   };
-
-  const handleScroll = useAnimatedScrollHandler({
-    onScroll: (_event) => {},
-  });
 
   return (
     <KeyboardProvider>
       <View style={[styles.container, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
         <KeyboardGestureArea interpolator="ios" offset={60} style={styles.container}>
-          <KeyboardAvoidingLegendList
+          <KeyboardAwareLegendList
             alignItemsAtEnd
+            anchoredEndSpace={anchorIndex !== undefined ? { anchorIndex } : undefined}
             contentContainerStyle={styles.contentContainer}
+            contentInsetEndAdjustment={contentInsetEndAdjustment}
             data={messages}
             estimatedItemSize={80}
+            freeze={freeze}
             initialScrollAtEnd
             keyExtractor={(item) => item.id}
+            keyboardDismissMode="interactive"
+            keyboardOffset={insets.bottom}
             maintainScrollAtEnd
             maintainVisibleContentPosition
-            onScroll={handleScroll}
+            ref={listRef}
             renderItem={ChatMessage}
-            safeAreaInsetBottom={insets.bottom}
             style={styles.list}
           />
         </KeyboardGestureArea>
         <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-          <View style={styles.inputContainer}>
+          <View ref={composerRef} onLayout={onComposerLayout} style={styles.inputContainer}>
             <TextInput
               onChangeText={setInputText}
               placeholder="Type a message"
@@ -2061,6 +2381,16 @@ export function KeyboardAvoidingExample() {
 ## react/examples/index
 
 <LegendListCuratedExamplesIndex />
+
+## Source fixtures
+
+The source repo also includes lower-level fixtures for behavior and regression surfaces that are not embedded as polished docs examples:
+
+- [Chat floating composer](https://github.com/LegendApp/legend-list/blob/main/example-web/src/fixtures/ChatFloatingComposerExample.tsx) shows `contentInsetEndAdjustment` with a measured overlay composer.
+- [AI chat floating composer](https://github.com/LegendApp/legend-list/blob/main/example-web/src/fixtures/AiChatFloatingComposerExample.tsx) combines `contentInsetEndAdjustment`, `anchoredEndSpace`, and `initialScrollAtEnd`.
+- [Initial scroll at end](https://github.com/LegendApp/legend-list/blob/main/example-web/src/fixtures/InitialScrollAtEndExample.tsx) covers end-starting lists.
+- [Window scroll](https://github.com/LegendApp/legend-list/blob/main/example-web/src/fixtures/WindowScrollExample.tsx) covers `useWindowScroll`.
+- [Library benchmark](https://github.com/LegendApp/legend-list/blob/main/example-web/src/examples/LibraryBenchmarkExample.tsx) is the current source-side cross-library comparison example.
 
 
 ## react/examples/infinite-calendar

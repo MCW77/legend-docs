@@ -76,10 +76,10 @@ export const CURATED_EXAMPLES: ExampleMeta[] = [
         title: "Infinite Calendar",
     },
     {
-        description: "Side-by-side comparison against other popular React virtual list libraries.",
+        description: "Manual cross-library benchmark for side-by-side scrolling comparison.",
         group: "Comparison",
         slug: "virtual-list-comparison",
-        title: "Virtual List Comparison",
+        title: "Library Benchmark",
     },
 ];
 
