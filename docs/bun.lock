@@ -5,7 +5,7 @@
     "": {
       "name": "docs",
       "dependencies": {
-        "@legendapp/list": "^3.0.0-beta.47",
+        "@legendapp/list": "^3.0.0-beta.53",
         "@legendapp/motion": "^2.5.3",
         "@legendapp/state": "^3.0.0-beta.35",
         "@next/third-parties": "16.1.6",
@@ -420,7 +420,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.30", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-GQ7Nw5G2lTu/BtHTKfXhKHok2WGetd4XYcVKGx00SjAk8GMwgJM3zr6zORiPGuOE+/vkc90KtTosSSvaCjKb2Q=="],
 
-    "@legendapp/list": ["@legendapp/list@3.0.0-beta.47", "", { "dependencies": { "use-sync-external-store": "^1.5.0" }, "peerDependencies": { "react": "*" } }, "sha512-TYPOjOkWfEpMAvK4GO0D8zuCkvYPnpnBYeGjwsJehmkEfJFT/ssEQzTKnctq/eBshbMJsdyLsJSM02H/6DGbEA=="],
+    "@legendapp/list": ["@legendapp/list@3.0.0-beta.53", "", { "dependencies": { "use-sync-external-store": "^1.5.0" }, "peerDependencies": { "react": "*" } }, "sha512-Oqf5ZGM0zGi7ltDoqjO7BSoH1nFcevBheLy8Mvqu/0KAT0iJv8S2wWSA4Tv4ei6a1cW5ihFl4IOzJKc1N96cAA=="],
 
     "@legendapp/motion": ["@legendapp/motion@2.5.3", "", { "dependencies": { "@legendapp/tools": "2.0.1" }, "peerDependencies": { "nativewind": ">=4.0.0", "react": ">=16", "react-native": "*" } }, "sha512-IcNiStiK3qG5LaIPLC8fVV0BHIrkf7EY5HfOv3xbuMH0z4D945yaaEDafP5bboHf/uj9XRjTQHVTtZgwpMNlHw=="],
 
