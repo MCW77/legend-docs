@@ -67,10 +67,10 @@ See [Guides](../guides#chat-interfaces) and [Keyboard & Animated](../react-nativ
 
 Items can have dynamic heights by default. You can add hints when you have them:
 
-- `estimatedItemSize` for a single rough estimate
+- `estimatedItemSize` as a small initial container allocation hint when rows are far from the default `100px`
 - `getFixedItemSize` for fixed-size rows that do not need measuring
 - `getItemType` to pool recycled items and size averages by item type
-- `onItemSizeChanged` and `getState().getAverageItemSizes()` to tune estimates from real measurements
+- `onItemSizeChanged` and `getState().getAverageItemSizes()` to inspect real measurements when needed
 
 For large initial scroll targets, v3 can seed the initial render near the requested target instead of walking every item from the beginning when the list has enough information to do so.
 

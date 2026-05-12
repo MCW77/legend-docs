@@ -5,9 +5,9 @@ title: Performance
 Legend List is very optimized by default, so it may already be working well without any configuration. But these are some common ways to improve your list behavior.
 
 `estimatedItemSize` and `getFixedItemSize` are optional optimizations.
-Legend List works without them. If you provide them, they can reduce mount-time work by helping Legend List allocate a viewport-sized set of items more accurately before real measurements are available. If you omit them, Legend List falls back to measured averages and a default initial estimate of `100px`.
+Legend List works without them. In v3, `estimatedItemSize` is mostly a small initial-mount hint that affects how many item containers are allocated before real measurements are available. If you omit it, Legend List uses a default initial estimate of `100px`, then switches to measured sizes and averages after rows render.
 
-The `onItemSizeChanged` event can also help with your estimations - it will be called whenever an item's size changes. So you can use it to log what the actual rendered size is to adjust your estimates.
+Do not spend time tuning `estimatedItemSize` unless your rows are significantly larger or smaller than `100px`, or you need better initial offsets for a far initial scroll or snap target.
 
 ### Use `keyExtractor` Prop
 
@@ -15,7 +15,9 @@ The `onItemSizeChanged` event can also help with your estimations - it will be c
 keyExtractor?: (item: T, index: number) => string;
 ```
 
-The `keyExtractor` prop lets Legend List save item layouts by key, so that if the `data` array changes it can reuse previous layout information and only update the changed items. Without `keyExtractor`, item sizes will reset to their default whenever `data` changes. So it is *very recommended* to have a `keyExtractor` if `data` ever changes. If your items are a fixed size, providing a `keyExtractor` that returns the index will tell it to reuse size information.
+The `keyExtractor` prop lets Legend List save item layouts by key, so when the `data` array changes it can reuse previous layout information and only update the changed items. Without `keyExtractor`, item sizes reset to their default whenever `data` changes.
+
+Use a stable unique ID whenever possible. Index keys are only safe for static or append-only lists where earlier items never move; for prepends, sorting, filtering, or reordering, index keys can attach cached measurements and recycled state to the wrong row.
 
 ### Recycling List Items
 
@@ -23,7 +25,7 @@ The `keyExtractor` prop lets Legend List save item layouts by key, so that if th
 recycleItems?: boolean // default: false
 ```
 
-Legend List has an optional `recycleItems` prop which enables view recycling. This will reuse the component rendered by your `renderItem` function. This can be a big performance optimization because it does not need to destroy/create views while scrolling. But it also reuses any local state, which can cause some weird behavior that may not be desirable depending on your app. But see the [recycling hooks](../api#userecyclingstate) to make that easier.
+Legend List has an optional `recycleItems` prop which enables view recycling. This reuses the component rendered by your `renderItem` function, which can be a big performance optimization because the list does not need to destroy and create views while scrolling. It also means local item state can carry over when a component is recycled for a different item, so use the [recycling hooks](../api#userecyclingstate) for item-scoped state that must reset.
 
 So there are some tradeoffs with recycling:
 
@@ -64,14 +66,14 @@ onItemSizeChanged?: (info: {
 
 If your list elements are a fixed size, then use `getFixedItemSize` to skip all of the work of measuring and adjusting items.
 
-Use `estimatedItemSize` only if you want to optimize the first render. It is not required for correctness.
+Use `estimatedItemSize` only if you want to lightly optimize the first render. It is not required for correctness.
 
-Providing an accurate item size estimate helps determine the number of containers to allocate, based on screen size / `estimatedItemSize`. `estimatedItemSize` is used only for the first render, then Legend List switches to using the average of actually rendered item sizes. The more accurate your initial estimate, the less extra mount-time work Legend List needs to do before measurements arrive.
+Providing an item size estimate helps determine the initial number of containers to allocate, based on screen size / `estimatedItemSize`. `estimatedItemSize` is used only before measurements are available, then Legend List switches to using the average of actually rendered item sizes.
 
 As a rule of thumb:
 
 - Use `getFixedItemSize` when item sizes are truly fixed.
-- Use `estimatedItemSize` when items are dynamic but roughly predictable.
+- Use `estimatedItemSize` when dynamic items are significantly different from the default `100px` estimate.
 - Skip all of them if the default behavior already looks good enough.
 
 Use `getState().getAverageItemSizes()` after rows have measured to inspect the current measured averages by item type:
@@ -80,10 +82,10 @@ Use `getState().getAverageItemSizes()` after rows have measured to inspect the c
 ref.current?.getState().getAverageItemSizes();
 ```
 
-For per-row diagnostics, use `onItemSizeChanged` to log actual size changes. It's generally better to slightly underestimate than overestimate item sizes. Without estimates, Legend List defaults to 100px, which can make the initial container allocation less efficient until real measurements are collected.
+For per-row diagnostics, use `onItemSizeChanged` to log actual size changes. Without estimates, Legend List defaults to `100px`, which is usually good enough; set `estimatedItemSize` only when that default causes noticeably too many or too few initial containers.
 
 <Callout>
-`getEstimatedItemSize` and `suggestEstimatedItemSize` are deprecated. Prefer a single `estimatedItemSize` for initial size hints, `getFixedItemSize` when item sizes are known exactly, and `getState().getAverageItemSizes()` when you want measured averages.
+`getEstimatedItemSize` and `suggestEstimatedItemSize` are deprecated. Prefer `getFixedItemSize` when item sizes are known exactly, `getState().getAverageItemSizes()` when you want measured averages, and `estimatedItemSize` only as a rough initial allocation hint when rows are far from `100px`.
 </Callout>
 
 ### Keep Specific Items Mounted

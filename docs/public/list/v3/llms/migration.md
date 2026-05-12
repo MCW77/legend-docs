@@ -35,7 +35,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 2) **Size hints and fixed-size callbacks**
    - `getFixedItemSize` is now `(item, index, type)`
-   - `getEstimatedItemSize` is deprecated. Prefer `estimatedItemSize` for initial dynamic-size hints, or `getFixedItemSize` when sizes are known exactly.
+   - `getEstimatedItemSize` is deprecated. Prefer no estimate for most dynamic-size lists, `estimatedItemSize` only as a small initial allocation hint when rows are far from `100px`, or `getFixedItemSize` when sizes are known exactly.
    - `suggestEstimatedItemSize` is deprecated. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average sizes directly.
 
 3) **Sticky headers prop rename**
@@ -73,7 +73,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 ## Migration checklist
 
 - Update fixed-size callback signatures to `(item, index, type)`
-- Replace `getEstimatedItemSize` with `estimatedItemSize` or `getFixedItemSize`
+- Replace `getEstimatedItemSize` with no estimate, `estimatedItemSize` only for unusual initial sizes, or `getFixedItemSize`
 - Replace `suggestEstimatedItemSize` with `getState().getAverageItemSizes()`
 - Replace `stickyIndices` with `stickyHeaderIndices`
 - Move imports to typed platform entrypoints (`/react-native` or `/react`)

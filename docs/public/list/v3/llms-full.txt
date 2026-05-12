@@ -75,7 +75,9 @@ ___
 keyExtractor?: (item: ItemT, index: number) => string;
 ```
 
-Highly recommended. The `keyExtractor` prop lets Legend List save item layouts by key, so that if the `data` array changes it can reuse previous layout information and only update the changed items. The value it returns should be unique to each item - if a value is reused for a different item it will cause big problems. It is okay to return the index, if list items are reordered or prepended, it will also cause big problems. See [Use key extractor](../performance#use-keyextractor).
+Strongly recommended. The `keyExtractor` prop lets Legend List save item layouts by key, so when the `data` array changes it can reuse previous layout information and update only the changed items.
+
+Return a stable unique key for each logical item. Reusing a key for different items, or using the item index in a list that can reorder or prepend items, will attach cached measurements and recycled state to the wrong row. Index keys are only reasonable for static or append-only lists where earlier item positions never change. See [Use key extractor](../performance#use-keyextractor).
 
 If LegendList detects duplicate keys, it will log a warning.
 
@@ -85,7 +87,7 @@ If LegendList detects duplicate keys, it will log a warning.
 recycleItems?: boolean; // default: false
 ```
 
-This will reuse the component rendered by your `renderItem` function. This can be a big performance improvement, but if your list items have internal state there's potential for undesirable behavior. For more information, see [Performance](../performance#recycling-list-items) for more information.
+This will reuse the component rendered by your `renderItem` function. This can be a big performance improvement, but if your list items have internal state there is potential for state to carry over when a component is recycled for a different item. See [Performance](../performance#recycling-list-items).
 
 <br />
 
@@ -160,8 +162,9 @@ The `drawDistance` (defaults to `250`) is the buffer size in pixels above and be
 estimatedItemSize?: number;
 ```
 
-Optional performance hint for the initial layout before items are measured.
-Legend List works without this prop, but providing a good estimate can reduce mount-time work by letting the list allocate a viewport-sized set of items more accurately before measurements are available. After the first render, Legend List uses measured item sizes and averages.
+Optional first-render allocation hint. Legend List works well without this prop, and after rows are measured it uses measured item sizes and averages instead.
+
+In v3, `estimatedItemSize` mostly affects how many item containers are allocated before measurement. The default estimate is `100px`, so you usually do not need to set it unless your rows are significantly larger or smaller than that, or you need better initial offsets for a far `initialScrollIndex` / `snapToIndices` target.
 
 ### estimatedListSize
 
@@ -215,7 +218,7 @@ Allows categorizing different item types for better performance optimization. It
 horizontal?: boolean; // default: false
 ```
 
-Renders all items in the list in horizontal.
+Renders items along the horizontal axis instead of the vertical axis.
 
 ### useWindowScroll
 
@@ -233,7 +236,7 @@ initialScrollIndex?: number | { index: number; viewOffset?: number; viewPosition
 
 Start scrolled with this item at the top (or at the provided `viewPosition`). If item sizes are dynamic, the list will adjust after measurement using the default scroll‑stabilization behavior.
 
-For large lists with a numeric `estimatedItemSize`, LegendList can seed the initial render near the target index instead of scanning from the beginning. If data arrives after mount, the initial target is re-armed and applied when items are available.
+For large lists, LegendList can seed the initial render near the target index instead of scanning from the beginning when it has enough sizing information. If data arrives after mount, the initial target is re-armed and applied when items are available.
 
 ### initialScrollOffset
 
@@ -319,6 +322,17 @@ Styling for internal View for `ListHeaderComponent`.
 
 See [React Native Docs](https://reactnative.dev/docs/flatlist#listheadercomponentstyle).
 
+### estimatedHeaderSize
+
+```ts
+estimatedHeaderSize?: number;
+```
+
+Estimated height of `ListHeaderComponent` before it is measured.
+
+Use this when the expected header height is known before layout and the header appears above the first visible items. It lets LegendList allocate only the rows that are actually visible below the header on the initial frame, instead of rendering a full viewport of rows that may be hidden behind the header.
+
+The measured header size replaces this estimate after layout.
 
 ### maintainScrollAtEnd
 
@@ -428,6 +442,16 @@ numColumns?: number;
 
 Multiple columns will zig-zag like a flexWrap layout. Rows will take the maximum height of their columns, so items should all be the same height - masonry layouts are not supported.
 
+### rtl
+
+```ts
+rtl?: boolean;
+```
+
+Forces right-to-left layout behavior for this list instance. When omitted, LegendList uses the platform/global RTL setting, such as React Native's `I18nManager.isRTL`.
+
+This is mainly useful for horizontal lists when you need one list to override the app-level RTL direction.
+
 ### onEndReached
 
 ```ts
@@ -456,7 +480,7 @@ onItemSizeChanged?: (info: {
     }) => void;
 ```
 
-Called whenever an item's rendered size changes. This can be used to adjust the estimatedItemSize to match the actual size, which can improve performance or reduce layout shifting.
+Called whenever an item's rendered size changes. This can be used to inspect real row sizes, especially if you are deciding whether `estimatedItemSize` is worth setting for unusual item sizes.
 
 ### onMetricsChange
 
@@ -602,7 +626,11 @@ const CustomScrollView = (props: ScrollViewProps) => {
 snapToIndices?: number[];
 ```
 
-An array of indices that the scroll position can snap to. When scrolling stops near one of these indices, the scroll position will automatically adjust to align with that item.
+An array of item indices that become snap points. LegendList converts those indices into scroll offsets and passes them to the underlying scroll container as snap offsets.
+
+On web, snap targets can point to items outside the currently mounted DOM window. LegendList computes the offsets from list measurements and estimates, so sparse snap targets can still work with virtualization.
+
+Use `getFixedItemSize` when snap targets have exact fixed sizes. For dynamic rows, `estimatedItemSize` is only an initial offset hint until rows are measured; it is usually worth setting only when rows differ significantly from the default `100px`.
 
 ### stickyHeaderIndices
 
@@ -699,6 +727,28 @@ export function MySectionList() {
 - Accepts shared LegendList performance props like `recycleItems`, `maintainScrollAtEnd`, and `drawDistance`.
 - Manages `stickyHeaderIndices` internally.
 
+Common SectionList-specific props:
+
+```ts
+type SectionListProps<ItemT, SectionT> = {
+  sections: ReadonlyArray<SectionListData<ItemT, SectionT>>;
+  renderItem?: (info: SectionListRenderItemInfo<ItemT, SectionT>) => ReactElement | null;
+  renderSectionHeader?: (info: { section: SectionListData<ItemT, SectionT> }) => ReactElement | null;
+  renderSectionFooter?: (info: { section: SectionListData<ItemT, SectionT> }) => ReactElement | null;
+  ItemSeparatorComponent?: ComponentType<SectionListSeparatorProps<ItemT, SectionT>> | null;
+  SectionSeparatorComponent?: ComponentType<SectionListSeparatorProps<ItemT, SectionT>> | ReactElement | null;
+  keyExtractor?: (item: ItemT, index: number) => string;
+  stickySectionHeadersEnabled?: boolean;
+  onViewableItemsChanged?: SectionListOnViewableItemsChanged<ItemT, SectionT>;
+};
+```
+
+Notes:
+
+- `stickySectionHeadersEnabled` defaults to the React Native platform behavior. It is enabled by default on iOS and disabled by default on other platforms.
+- `onViewableItemsChanged` receives item tokens mapped back to `{ item, index, key, isViewable, section }`, so callbacks do not need to understand the internal flattened section rows.
+- Section and item separators receive React Native-style separator helpers (`highlight`, `unhighlight`, `updateProps`) plus section/item context.
+
 ### scrollToLocation
 
 ```ts
@@ -788,7 +838,7 @@ scrollToIndex(params: {
 }): Promise<void>;
 ```
 
-Scrolls to the item at the specified index. For the most accurate results, provide `estimatedItemSize` for dynamic rows or [getFixedItemSize](#getfixeditemsize) for truly fixed-size rows. Size stabilization is enabled by default for dynamic items.
+Scrolls to the item at the specified index. For the most accurate initial offset, use [getFixedItemSize](#getfixeditemsize) for truly fixed-size rows. Dynamic rows stabilize through measurement; `estimatedItemSize` is only an initial hint and is most useful when rows differ significantly from the default `100px`.
 Returns a promise that resolves when the imperative scroll finishes (or immediately if no scroll was needed).
 
 ### scrollToOffset
@@ -1197,7 +1247,7 @@ type LegendListAverageItemSize = {
 - `contentLength`: content size of the list including header/footer/insets
 - `data`: current data array reference used by the list
 - `elementAtIndex(index)`: rendered native element for an index (if currently mapped to a container)
-- `getAverageItemSizes()`: measured average item sizes grouped by item type. Use this to inspect real sizing data and tune `estimatedItemSize` after rows have been measured.
+- `getAverageItemSizes()`: measured average item sizes grouped by item type. Use this to inspect real sizing data when deciding whether `estimatedItemSize` is worth setting for unusually sized rows.
 - `start` / `end`: visible range bounds without buffer
 - `startBuffered` / `endBuffered`: virtualized range bounds including draw buffer
 - `isAtStart` / `isAtEnd`: threshold-based booleans for edge-of-list state
@@ -1346,7 +1396,7 @@ These APIs are deprecated or compatibility-only; new code should avoid them.
 suggestEstimatedItemSize?: boolean;
 ```
 
-Deprecated development logging prop. Use `ref.current?.getState().getAverageItemSizes()` to inspect the measured average item sizes directly, then tune `estimatedItemSize` or add `getFixedItemSize` where sizes are exact.
+Deprecated development logging prop. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average item sizes directly. Add `getFixedItemSize` where sizes are exact, or set `estimatedItemSize` only when the default `100px` initial estimate is a poor fit.
 
 ### getEstimatedItemSize (deprecated)
 
@@ -1356,10 +1406,10 @@ getEstimatedItemSize?: (item: ItemT, index: number, itemType?: string) => number
 
 Deprecated per-item estimate function. Prefer:
 
-- `estimatedItemSize` when a single rough initial estimate is enough
+- `estimatedItemSize` only when the default `100px` initial estimate is a poor fit
 - `getFixedItemSize` when item sizes are known exactly
 
-`getEstimatedItemSize` still works, but it prevents LegendList from switching to measured averages for unmeasured items of the same type. In most dynamic-size lists, a single `estimatedItemSize` plus measured averages is the preferred path.
+`getEstimatedItemSize` still works, but it prevents LegendList from switching to measured averages for unmeasured items of the same type. In most dynamic-size lists, no estimate is needed; use a single `estimatedItemSize` only as a small initial-mount optimization when rows are significantly different from `100px`.
 
 ### initialContainerPoolRatio (deprecated)
 
@@ -1408,6 +1458,44 @@ maintainScrollAtEndThreshold?: number;
 Pitfalls:
 - Avoid `inverted`; it can cause animation and scroll edge cases.
 - Tune `maintainScrollAtEndThreshold` for your UX.
+
+## Initial Positioning
+
+Use declarative initial scroll props when the first viewport should start at a specific item or at the end of the list.
+
+```ts
+initialScrollAtEnd?: boolean;
+initialScrollIndex?: number | { index: number; viewOffset?: number; viewPosition?: number };
+initialScrollOffset?: number;
+```
+
+```tsx
+<LegendList
+  data={messages}
+  keyExtractor={(item) => item.id}
+  renderItem={renderMessage}
+  estimatedItemSize={72}
+  initialScrollIndex={{ index: highlightedIndex, viewPosition: 0.5 }}
+/>
+```
+
+For chat and timeline screens, prefer `initialScrollAtEnd` over calling `scrollToEnd` after mount.
+
+```tsx
+<LegendList
+  data={messages}
+  keyExtractor={(item) => item.id}
+  renderItem={renderMessage}
+  estimatedItemSize={72}
+  initialScrollAtEnd
+  maintainScrollAtEnd
+/>
+```
+
+Pitfalls:
+- Prefer `initialScrollIndex`, `initialScrollOffset`, or `initialScrollAtEnd` for initial placement instead of imperative scroll calls in `useEffect`.
+- Provide `getFixedItemSize` when target rows have exact fixed sizes. Use `estimatedItemSize` only as a rough initial offset hint when dynamic rows are significantly different from `100px`.
+- Use stable keys so measurement caches can survive data refreshes.
 
 ## Floating Composer / Overlay Insets
 
@@ -1466,6 +1554,43 @@ Pitfalls:
 - Use `anchoredEndSpace` for the row you want to land near the start after sending.
 - Keep a stable `keyExtractor`; changing keys while adjusting overlay inset will discard size and position caches.
 
+## Web Layout and Window Scroll
+
+Use the React entrypoint for DOM-native lists:
+
+```tsx
+import { LegendList } from "@legendapp/list/react";
+```
+
+For contained lists, the scroll container needs a real height.
+
+```tsx
+<div style={{ height: 480, minHeight: 0 }}>
+  <LegendList
+    data={items}
+    keyExtractor={(item) => item.id}
+    renderItem={renderItem}
+    style={{ height: "100%" }}
+  />
+</div>
+```
+
+For pages that already scroll at the document level, use `useWindowScroll`.
+
+```tsx
+<LegendList
+  data={items}
+  keyExtractor={(item) => item.id}
+  renderItem={renderItem}
+  useWindowScroll
+/>
+```
+
+Pitfalls:
+- In flex layouts, make sure parent containers can shrink, usually with `minHeight: 0`.
+- Use `contentContainerStyle` for item spacing such as `gap`; `gap-*` classes on `contentContainerClassName` do not control virtualized item spacing.
+- Use the React Native entrypoint instead if your app renders through React Native Web.
+
 ## Infinite Scrolling
 
 Use `onEndReached` for standard feeds and `onStartReached` for prepending older items.
@@ -1494,6 +1619,28 @@ onEndReachedThreshold?: number;
 Pitfalls:
 - Guard against duplicate loads (`loading` state or request dedupe).
 - For prepend flows, keep `maintainVisibleContentPosition={{ data: true }}`.
+
+## Snap to Indices
+
+Use `snapToIndices` when specific rows should become scroll snap points.
+
+```tsx
+<LegendList
+  data={sections}
+  estimatedItemSize={320}
+  getFixedItemSize={(item) => item.height}
+  keyExtractor={(item) => item.id}
+  renderItem={renderSection}
+  snapToIndices={[0, 4, 8, 12]}
+/>
+```
+
+On web, snap indices can point to items outside the currently mounted DOM window. LegendList computes snap offsets from list measurements and estimates, so virtualization does not require every snap target to be mounted.
+
+Pitfalls:
+- Use `getFixedItemSize` for exact snap positions when item sizes are fixed.
+- For dynamic rows, `estimatedItemSize` only improves the initial snap offset before rows are measured. It is usually worth setting only when rows are far from the default `100px`.
+- Keep snap indices within the data range and update them when the data shape changes.
 
 ## Always Render
 
@@ -1543,6 +1690,44 @@ Common setup for prepend-heavy feeds:
   onStartReached={loadOlderMessages}
 />
 ```
+
+## Item Size Hints
+
+LegendList measures dynamic items automatically, so size props are optional. In v3, `estimatedItemSize` is mostly just an initial container allocation hint before measurement. The default estimate is `100px`, and after rows render LegendList uses measured sizes and averages.
+
+Only set `estimatedItemSize` when most rows are significantly larger or smaller than `100px`, or when a far initial scroll / snap target needs a better first offset.
+
+```tsx
+<LegendList
+  data={items}
+  estimatedItemSize={88}
+  getItemType={(item) => item.kind}
+  keyExtractor={(item) => item.id}
+  renderItem={renderItem}
+/>
+```
+
+Use `getFixedItemSize` when the rendered size is exact. This is a stronger optimization than `estimatedItemSize` because those rows do not need measurement.
+
+```tsx
+<LegendList
+  data={rows}
+  getFixedItemSize={(item) => (item.kind === "header" ? 48 : 72)}
+  keyExtractor={(item) => item.id}
+  renderItem={renderRow}
+/>
+```
+
+To inspect measured averages after rows render, use `getState().getAverageItemSizes()`.
+
+```tsx
+const averages = listRef.current?.getState().getAverageItemSizes();
+```
+
+Pitfalls:
+- Do not use deprecated `getEstimatedItemSize` for new code.
+- Use `getItemType` when item families have meaningfully different average sizes.
+- Do not tune `estimatedItemSize` just to match measured averages closely; it mostly affects initial container count.
 
 ## SectionList patterns
 
@@ -1603,7 +1788,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 2) **Size hints and fixed-size callbacks**
    - `getFixedItemSize` is now `(item, index, type)`
-   - `getEstimatedItemSize` is deprecated. Prefer `estimatedItemSize` for initial dynamic-size hints, or `getFixedItemSize` when sizes are known exactly.
+   - `getEstimatedItemSize` is deprecated. Prefer no estimate for most dynamic-size lists, `estimatedItemSize` only as a small initial allocation hint when rows are far from `100px`, or `getFixedItemSize` when sizes are known exactly.
    - `suggestEstimatedItemSize` is deprecated. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average sizes directly.
 
 3) **Sticky headers prop rename**
@@ -1641,7 +1826,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 ## Migration checklist
 
 - Update fixed-size callback signatures to `(item, index, type)`
-- Replace `getEstimatedItemSize` with `estimatedItemSize` or `getFixedItemSize`
+- Replace `getEstimatedItemSize` with no estimate, `estimatedItemSize` only for unusual initial sizes, or `getFixedItemSize`
 - Replace `suggestEstimatedItemSize` with `getState().getAverageItemSizes()`
 - Replace `stickyIndices` with `stickyHeaderIndices`
 - Move imports to typed platform entrypoints (`/react-native` or `/react`)
@@ -1728,10 +1913,10 @@ See [Guides](../guides#chat-interfaces) and [Keyboard & Animated](../react-nativ
 
 Items can have dynamic heights by default. You can add hints when you have them:
 
-- `estimatedItemSize` for a single rough estimate
+- `estimatedItemSize` as a small initial container allocation hint when rows are far from the default `100px`
 - `getFixedItemSize` for fixed-size rows that do not need measuring
 - `getItemType` to pool recycled items and size averages by item type
-- `onItemSizeChanged` and `getState().getAverageItemSizes()` to tune estimates from real measurements
+- `onItemSizeChanged` and `getState().getAverageItemSizes()` to inspect real measurements when needed
 
 For large initial scroll targets, v3 can seed the initial render near the requested target instead of walking every item from the beginning when the list has enough information to do so.
 
@@ -1779,9 +1964,9 @@ Read the full change summary in [Migration to v3](../migration).
 Legend List is very optimized by default, so it may already be working well without any configuration. But these are some common ways to improve your list behavior.
 
 `estimatedItemSize` and `getFixedItemSize` are optional optimizations.
-Legend List works without them. If you provide them, they can reduce mount-time work by helping Legend List allocate a viewport-sized set of items more accurately before real measurements are available. If you omit them, Legend List falls back to measured averages and a default initial estimate of `100px`.
+Legend List works without them. In v3, `estimatedItemSize` is mostly a small initial-mount hint that affects how many item containers are allocated before real measurements are available. If you omit it, Legend List uses a default initial estimate of `100px`, then switches to measured sizes and averages after rows render.
 
-The `onItemSizeChanged` event can also help with your estimations - it will be called whenever an item's size changes. So you can use it to log what the actual rendered size is to adjust your estimates.
+Do not spend time tuning `estimatedItemSize` unless your rows are significantly larger or smaller than `100px`, or you need better initial offsets for a far initial scroll or snap target.
 
 ### Use `keyExtractor` Prop
 
@@ -1789,7 +1974,9 @@ The `onItemSizeChanged` event can also help with your estimations - it will be c
 keyExtractor?: (item: T, index: number) => string;
 ```
 
-The `keyExtractor` prop lets Legend List save item layouts by key, so that if the `data` array changes it can reuse previous layout information and only update the changed items. Without `keyExtractor`, item sizes will reset to their default whenever `data` changes. So it is *very recommended* to have a `keyExtractor` if `data` ever changes. If your items are a fixed size, providing a `keyExtractor` that returns the index will tell it to reuse size information.
+The `keyExtractor` prop lets Legend List save item layouts by key, so when the `data` array changes it can reuse previous layout information and only update the changed items. Without `keyExtractor`, item sizes reset to their default whenever `data` changes.
+
+Use a stable unique ID whenever possible. Index keys are only safe for static or append-only lists where earlier items never move; for prepends, sorting, filtering, or reordering, index keys can attach cached measurements and recycled state to the wrong row.
 
 ### Recycling List Items
 
@@ -1797,7 +1984,7 @@ The `keyExtractor` prop lets Legend List save item layouts by key, so that if th
 recycleItems?: boolean // default: false
 ```
 
-Legend List has an optional `recycleItems` prop which enables view recycling. This will reuse the component rendered by your `renderItem` function. This can be a big performance optimization because it does not need to destroy/create views while scrolling. But it also reuses any local state, which can cause some weird behavior that may not be desirable depending on your app. But see the [recycling hooks](../api#userecyclingstate) to make that easier.
+Legend List has an optional `recycleItems` prop which enables view recycling. This reuses the component rendered by your `renderItem` function, which can be a big performance optimization because the list does not need to destroy and create views while scrolling. It also means local item state can carry over when a component is recycled for a different item, so use the [recycling hooks](../api#userecyclingstate) for item-scoped state that must reset.
 
 So there are some tradeoffs with recycling:
 
@@ -1838,14 +2025,14 @@ onItemSizeChanged?: (info: {
 
 If your list elements are a fixed size, then use `getFixedItemSize` to skip all of the work of measuring and adjusting items.
 
-Use `estimatedItemSize` only if you want to optimize the first render. It is not required for correctness.
+Use `estimatedItemSize` only if you want to lightly optimize the first render. It is not required for correctness.
 
-Providing an accurate item size estimate helps determine the number of containers to allocate, based on screen size / `estimatedItemSize`. `estimatedItemSize` is used only for the first render, then Legend List switches to using the average of actually rendered item sizes. The more accurate your initial estimate, the less extra mount-time work Legend List needs to do before measurements arrive.
+Providing an item size estimate helps determine the initial number of containers to allocate, based on screen size / `estimatedItemSize`. `estimatedItemSize` is used only before measurements are available, then Legend List switches to using the average of actually rendered item sizes.
 
 As a rule of thumb:
 
 - Use `getFixedItemSize` when item sizes are truly fixed.
-- Use `estimatedItemSize` when items are dynamic but roughly predictable.
+- Use `estimatedItemSize` when dynamic items are significantly different from the default `100px` estimate.
 - Skip all of them if the default behavior already looks good enough.
 
 Use `getState().getAverageItemSizes()` after rows have measured to inspect the current measured averages by item type:
@@ -1854,10 +2041,10 @@ Use `getState().getAverageItemSizes()` after rows have measured to inspect the c
 ref.current?.getState().getAverageItemSizes();
 ```
 
-For per-row diagnostics, use `onItemSizeChanged` to log actual size changes. It's generally better to slightly underestimate than overestimate item sizes. Without estimates, Legend List defaults to 100px, which can make the initial container allocation less efficient until real measurements are collected.
+For per-row diagnostics, use `onItemSizeChanged` to log actual size changes. Without estimates, Legend List defaults to `100px`, which is usually good enough; set `estimatedItemSize` only when that default causes noticeably too many or too few initial containers.
 
 <Callout>
-`getEstimatedItemSize` and `suggestEstimatedItemSize` are deprecated. Prefer a single `estimatedItemSize` for initial size hints, `getFixedItemSize` when item sizes are known exactly, and `getState().getAverageItemSizes()` when you want measured averages.
+`getEstimatedItemSize` and `suggestEstimatedItemSize` are deprecated. Prefer `getFixedItemSize` when item sizes are known exactly, `getState().getAverageItemSizes()` when you want measured averages, and `estimatedItemSize` only as a rough initial allocation hint when rows are far from `100px`.
 </Callout>
 
 ### Keep Specific Items Mounted

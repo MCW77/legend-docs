@@ -25,6 +25,44 @@ Pitfalls:
 - Avoid `inverted`; it can cause animation and scroll edge cases.
 - Tune `maintainScrollAtEndThreshold` for your UX.
 
+## Initial Positioning
+
+Use declarative initial scroll props when the first viewport should start at a specific item or at the end of the list.
+
+```ts
+initialScrollAtEnd?: boolean;
+initialScrollIndex?: number | { index: number; viewOffset?: number; viewPosition?: number };
+initialScrollOffset?: number;
+```
+
+```tsx
+<LegendList
+  data={messages}
+  keyExtractor={(item) => item.id}
+  renderItem={renderMessage}
+  estimatedItemSize={72}
+  initialScrollIndex={{ index: highlightedIndex, viewPosition: 0.5 }}
+/>
+```
+
+For chat and timeline screens, prefer `initialScrollAtEnd` over calling `scrollToEnd` after mount.
+
+```tsx
+<LegendList
+  data={messages}
+  keyExtractor={(item) => item.id}
+  renderItem={renderMessage}
+  estimatedItemSize={72}
+  initialScrollAtEnd
+  maintainScrollAtEnd
+/>
+```
+
+Pitfalls:
+- Prefer `initialScrollIndex`, `initialScrollOffset`, or `initialScrollAtEnd` for initial placement instead of imperative scroll calls in `useEffect`.
+- Provide `getFixedItemSize` when target rows have exact fixed sizes. Use `estimatedItemSize` only as a rough initial offset hint when dynamic rows are significantly different from `100px`.
+- Use stable keys so measurement caches can survive data refreshes.
+
 ## Floating Composer / Overlay Insets
 
 Use this when a composer or input bar visually covers the end of the list but should stay outside the list's normal content.
@@ -82,6 +120,43 @@ Pitfalls:
 - Use `anchoredEndSpace` for the row you want to land near the start after sending.
 - Keep a stable `keyExtractor`; changing keys while adjusting overlay inset will discard size and position caches.
 
+## Web Layout and Window Scroll
+
+Use the React entrypoint for DOM-native lists:
+
+```tsx
+import { LegendList } from "@legendapp/list/react";
+```
+
+For contained lists, the scroll container needs a real height.
+
+```tsx
+<div style={{ height: 480, minHeight: 0 }}>
+  <LegendList
+    data={items}
+    keyExtractor={(item) => item.id}
+    renderItem={renderItem}
+    style={{ height: "100%" }}
+  />
+</div>
+```
+
+For pages that already scroll at the document level, use `useWindowScroll`.
+
+```tsx
+<LegendList
+  data={items}
+  keyExtractor={(item) => item.id}
+  renderItem={renderItem}
+  useWindowScroll
+/>
+```
+
+Pitfalls:
+- In flex layouts, make sure parent containers can shrink, usually with `minHeight: 0`.
+- Use `contentContainerStyle` for item spacing such as `gap`; `gap-*` classes on `contentContainerClassName` do not control virtualized item spacing.
+- Use the React Native entrypoint instead if your app renders through React Native Web.
+
 ## Infinite Scrolling
 
 Use `onEndReached` for standard feeds and `onStartReached` for prepending older items.
@@ -110,6 +185,28 @@ onEndReachedThreshold?: number;
 Pitfalls:
 - Guard against duplicate loads (`loading` state or request dedupe).
 - For prepend flows, keep `maintainVisibleContentPosition={{ data: true }}`.
+
+## Snap to Indices
+
+Use `snapToIndices` when specific rows should become scroll snap points.
+
+```tsx
+<LegendList
+  data={sections}
+  estimatedItemSize={320}
+  getFixedItemSize={(item) => item.height}
+  keyExtractor={(item) => item.id}
+  renderItem={renderSection}
+  snapToIndices={[0, 4, 8, 12]}
+/>
+```
+
+On web, snap indices can point to items outside the currently mounted DOM window. LegendList computes snap offsets from list measurements and estimates, so virtualization does not require every snap target to be mounted.
+
+Pitfalls:
+- Use `getFixedItemSize` for exact snap positions when item sizes are fixed.
+- For dynamic rows, `estimatedItemSize` only improves the initial snap offset before rows are measured. It is usually worth setting only when rows are far from the default `100px`.
+- Keep snap indices within the data range and update them when the data shape changes.
 
 ## Always Render
 
@@ -159,6 +256,44 @@ Common setup for prepend-heavy feeds:
   onStartReached={loadOlderMessages}
 />
 ```
+
+## Item Size Hints
+
+LegendList measures dynamic items automatically, so size props are optional. In v3, `estimatedItemSize` is mostly just an initial container allocation hint before measurement. The default estimate is `100px`, and after rows render LegendList uses measured sizes and averages.
+
+Only set `estimatedItemSize` when most rows are significantly larger or smaller than `100px`, or when a far initial scroll / snap target needs a better first offset.
+
+```tsx
+<LegendList
+  data={items}
+  estimatedItemSize={88}
+  getItemType={(item) => item.kind}
+  keyExtractor={(item) => item.id}
+  renderItem={renderItem}
+/>
+```
+
+Use `getFixedItemSize` when the rendered size is exact. This is a stronger optimization than `estimatedItemSize` because those rows do not need measurement.
+
+```tsx
+<LegendList
+  data={rows}
+  getFixedItemSize={(item) => (item.kind === "header" ? 48 : 72)}
+  keyExtractor={(item) => item.id}
+  renderItem={renderRow}
+/>
+```
+
+To inspect measured averages after rows render, use `getState().getAverageItemSizes()`.
+
+```tsx
+const averages = listRef.current?.getState().getAverageItemSizes();
+```
+
+Pitfalls:
+- Do not use deprecated `getEstimatedItemSize` for new code.
+- Use `getItemType` when item families have meaningfully different average sizes.
+- Do not tune `estimatedItemSize` just to match measured averages closely; it mostly affects initial container count.
 
 ## SectionList patterns
 
