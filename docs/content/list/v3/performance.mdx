@@ -84,10 +84,6 @@ ref.current?.getState().getAverageItemSizes();
 
 For per-row diagnostics, use `onItemSizeChanged` to log actual size changes. Without estimates, Legend List defaults to `100px`, which is usually good enough; set `estimatedItemSize` only when that default causes noticeably too many or too few initial containers.
 
-<Callout>
-`getEstimatedItemSize` and `suggestEstimatedItemSize` are deprecated. Prefer `getFixedItemSize` when item sizes are known exactly, `getState().getAverageItemSizes()` when you want measured averages, and `estimatedItemSize` only as a rough initial allocation hint when rows are far from `100px`.
-</Callout>
-
 ### Keep Specific Items Mounted
 
 ```ts

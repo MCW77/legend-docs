@@ -1,10 +1,8 @@
-Legend List is a high-performance virtualized list for **React Native and React DOM**. It is a drop-in replacement for FlatList/FlashList on React Native, and a DOM-native virtual list on the web.
+Legend List is a high-performance virtualized list for **React Native and React DOM**. It is a drop-in replacement for FlatList/FlashList on React Native, and a DOM-native virtual list for React.
 
-Version 3 is a full cross-platform list system, not just a mobile list with a web adapter. It shares the same virtualization core across renderers while exposing typed entrypoints for each platform.
-
-- ✨ Fast dynamic-size virtualization
+- ✨ Dynamic sizes with no manual measuring
 - ✨ Accurate `initialScrollIndex` and `initialScrollAtEnd`
-- ✨ Chat and AI chat without inverted lists
+- ✨ Chat and AI chat without inverted lists or crazy hacks
 - ✨ Bidirectional infinite lists with scroll anchoring
 - ✨ Floating composer and overlay inset support
 - ✨ Optional item recycling with recycling-aware hooks
@@ -47,7 +45,7 @@ A FlashLight measurement of the above test shows that LegendList uses less CPU w
 - **React (Web)** → import from `@legendapp/list/react` and start with [Getting Started (Web)](../react/getting-started).
 - **React Native Web** → use the React Native entrypoint so your app keeps React Native component semantics.
 
-The root import (`@legendapp/list`) still works, and all of these imports run the same JS, but each import has platform-specific types.
+All of these imports run the same JS engine, the separate import paths are just for platform-specific types.
 
 ## Built for Chat and Feeds
 
@@ -59,31 +57,7 @@ Legend List has first-class primitives for timelines that grow at both ends:
 - `maintainVisibleContentPosition` keeps the current viewport stable during prepends and size changes.
 - `onStartReached` and `onEndReached` support bidirectional pagination.
 
-For floating composers and AI chat UIs, `contentInsetEndAdjustment` reserves real end space on web, and `KeyboardAwareLegendList` plus `useKeyboardChatComposerInset` do the same for React Native keyboard-driven layouts.
-
 See [Guides](../guides#chat-interfaces) and [Keyboard & Animated](../react-native/keyboard-and-animated#keyboardawarelegendlist).
-
-## Dynamic Layout Without Guesswork
-
-Items can have dynamic heights by default. You can add hints when you have them:
-
-- `estimatedItemSize` as a small initial container allocation hint when rows are far from the default `100px`
-- `getFixedItemSize` for fixed-size rows that do not need measuring
-- `getItemType` to pool recycled items and size averages by item type
-- `onItemSizeChanged` and `getState().getAverageItemSizes()` to inspect real measurements when needed
-
-For large initial scroll targets, v3 can seed the initial render near the requested target instead of walking every item from the beginning when the list has enough information to do so.
-
-## Web Support
-
-The `@legendapp/list/react` entrypoint renders DOM elements directly, with no React Native dependency required. It supports:
-
-- `useWindowScroll` for pages that scroll at the document level
-- CSS `style`, `contentContainerStyle`, and `contentContainerClassName`
-- `contentInsetEndAdjustment` as real trailing DOM space for overlays
-- the same core scroll, measurement, recycling, and viewability behavior as React Native
-
-See the [web examples](../react/examples) for product-style examples and source fixtures.
 
 ## Advanced List Features
 
@@ -101,6 +75,7 @@ Legend List v3 also includes:
 ## What’s new in v3
 
 - Web support (no React Native dependency required)
+- Improved performance and stability
 - SectionList component (`@legendapp/list/section-list`)
 - `alwaysRender` for keeping selected items mounted
 - New `maintainVisibleContentPosition` configuration
@@ -108,6 +83,6 @@ Legend List v3 also includes:
 - `contentInsetEndAdjustment` for floating composers and overlay UI
 - `KeyboardAwareLegendList` and `useKeyboardChatComposerInset`
 - Expanded `getState()` and async ref methods
-- `stickyHeaderIndices` (with `stickyIndices` deprecated)
+- `stickyHeaderIndices`
 
 Read the full change summary in [Migration to v3](../migration).

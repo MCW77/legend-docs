@@ -100,16 +100,6 @@ export function ReanimatedSharedValuesExample() {
 }
 ```
 
-Supported shared values:
-
-- `activeStickyIndex`
-- `isAtEnd`
-- `isAtStart`
-- `isNearEnd`
-- `isNearStart`
-- `isWithinMaintainScrollAtEndThreshold`
-- `scrollOffset`
-
 Notes:
 
 - `sharedValues` is only supported by `AnimatedLegendList` from `@legendapp/list/reanimated`.
@@ -157,11 +147,7 @@ const AnimatedLegendList = Animated.createAnimatedComponent(LegendList);
 
 ## KeyboardAwareLegendList
 
-Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for keyboard-aware scrolling, keyboard-driven insets, floating composers, and chat-style end anchoring.
-
-<Callout title="Background">
-The keyboard-aware chat integration was inspired by the v0 mobile app's composer and keyboard behavior.
-</Callout>
+Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for keyboard-aware scrolling, keyboard-driven insets, floating composers, and chat-style end anchoring. This was inspired by the v0 mobile app's composer and keyboard behavior.
 
 ```ts
 import {

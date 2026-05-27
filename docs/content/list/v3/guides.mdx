@@ -295,7 +295,6 @@ const averages = listRef.current?.getState().getAverageItemSizes();
 ```
 
 Pitfalls:
-- Do not use deprecated `getEstimatedItemSize` for new code.
 - Use `getItemType` when item families have meaningfully different average sizes.
 - Do not tune `estimatedItemSize` just to match measured averages closely; it mostly affects initial container count.
 

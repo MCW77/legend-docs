@@ -24,7 +24,13 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 ## 🔄 Breaking changes from v2
 
-1) **`maintainVisibleContentPosition` defaults**
+1) **Typed import paths**
+   - The root `@legendapp/list` component export has been removed in v3.
+   - Use:
+     - React Native: `@legendapp/list/react-native`
+     - React (Web): `@legendapp/list/react`
+
+2) **`maintainVisibleContentPosition` defaults**
    - v3 now enables scroll-position stabilization on size changes by default
    - Default behavior is equivalent to `maintainVisibleContentPosition={{ size: true, data: false }}`
    - Toggle specific behavior as needed:
@@ -33,19 +39,13 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
      - `maintainVisibleContentPosition={true}` to enable both `size` and `data`
      - `maintainVisibleContentPosition={false}` to disable both
 
-2) **Size hints and fixed-size callbacks**
+3) **Size hints and fixed-size callbacks**
    - `getFixedItemSize` is now `(item, index, type)`
-   - `getEstimatedItemSize` is deprecated. Prefer no estimate for most dynamic-size lists, `estimatedItemSize` only as a small initial allocation hint when rows are far from `100px`, or `getFixedItemSize` when sizes are known exactly.
-   - `suggestEstimatedItemSize` is deprecated. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average sizes directly.
+   - `getEstimatedItemSize` has been removed. Prefer no estimate for most dynamic-size lists, `estimatedItemSize` only as a small initial allocation hint when rows are far from `100px`, or `getFixedItemSize` when sizes are known exactly.
+   - `suggestEstimatedItemSize` has been removed. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average sizes directly.
 
-3) **Sticky headers prop rename**
-   - `stickyIndices` → `stickyHeaderIndices` (deprecated alias kept for now)
-
-4) **Typed import paths**
-   - Root import `@legendapp/list` remains functional, but is deprecated for strict typing in v3.
-   - Prefer:
-     - React Native: `@legendapp/list/react-native`
-     - React (Web): `@legendapp/list/react`
+4) **Sticky headers prop rename**
+   - `stickyIndices` has been removed. Use `stickyHeaderIndices`.
 
 5) **Keyboard integration entrypoint update**
    - v2 keyboard docs used `@legendapp/list/keyboard-controller` and `LegendList`.
@@ -75,13 +75,19 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
      - `positionByKey(key)`
    - `getState()` now also exposes listener helpers (`listen`, `listenToPosition`), `scrollVelocity`, and `getAverageItemSizes()`.
 
+9) **Removed beta compatibility props and types**
+   - `initialContainerPoolRatio` has been removed. LegendList manages spare container capacity automatically.
+   - `InitialScrollAnchor` has been removed. Use `ScrollIndexWithOffsetPosition` for public initial-scroll position typing.
+
 ## Migration checklist
 
+- Move imports to typed platform entrypoints (`/react-native` or `/react`)
 - Update fixed-size callback signatures to `(item, index, type)`
 - Replace `getEstimatedItemSize` with no estimate, `estimatedItemSize` only for unusual initial sizes, or `getFixedItemSize`
 - Replace `suggestEstimatedItemSize` with `getState().getAverageItemSizes()`
 - Replace `stickyIndices` with `stickyHeaderIndices`
-- Move imports to typed platform entrypoints (`/react-native` or `/react`)
+- Remove `initialContainerPoolRatio`; spare container capacity is automatic
+- Replace `InitialScrollAnchor` type references with `ScrollIndexWithOffsetPosition`
 - Update keyboard imports from `@legendapp/list/keyboard-controller` to `@legendapp/list/keyboard` and use `KeyboardAwareLegendList`
 - Wrap hook-using item components in a `renderItem` callback instead of passing them directly
 - For floating composers, replace content padding workarounds with `contentInsetEndAdjustment` on web or `useKeyboardChatComposerInset` with `KeyboardAwareLegendList` on React Native

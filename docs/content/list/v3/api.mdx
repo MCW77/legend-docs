@@ -26,10 +26,6 @@ import {
 } from "@legendapp/list/keyboard";
 ```
 
-<Callout>
-The root import (`@legendapp/list`) is still functional (they all share the same JavaScript code), but deprecated for strict typing. Prefer `@legendapp/list/react-native` and `@legendapp/list/react`.
-</Callout>
-
 See [Keyboard & Animated](../react-native/keyboard-and-animated) for Reanimated-only props such as `sharedValues` and `itemLayoutAnimation`.
 
 ## Required Props
@@ -1399,48 +1395,5 @@ function AverageSizeExample() {
   return <LegendList ref={ref} data={data} renderItem={renderItem} />;
 }
 ```
-
-<br />
-
-## Deprecated APIs
-
-These APIs are deprecated or compatibility-only; new code should avoid them.
-
-### suggestEstimatedItemSize (deprecated)
-
-```ts
-suggestEstimatedItemSize?: boolean;
-```
-
-Deprecated development logging prop. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average item sizes directly. Add `getFixedItemSize` where sizes are exact, or set `estimatedItemSize` only when the default `100px` initial estimate is a poor fit.
-
-### getEstimatedItemSize (deprecated)
-
-```ts
-getEstimatedItemSize?: (item: ItemT, index: number, itemType?: string) => number;
-```
-
-Deprecated per-item estimate function. Prefer:
-
-- `estimatedItemSize` only when the default `100px` initial estimate is a poor fit
-- `getFixedItemSize` when item sizes are known exactly
-
-`getEstimatedItemSize` still works, but it prevents LegendList from switching to measured averages for unmeasured items of the same type. In most dynamic-size lists, no estimate is needed; use a single `estimatedItemSize` only as a small initial-mount optimization when rows are significantly different from `100px`.
-
-### initialContainerPoolRatio (deprecated)
-
-```ts
-initialContainerPoolRatio?: number;
-```
-
-Deprecated container-pool tuning escape hatch. LegendList now manages spare container capacity automatically, so new code should leave this unset.
-
-### stickyIndices (deprecated)
-
-```ts
-stickyIndices?: number[];
-```
-
-Deprecated alias for `stickyHeaderIndices`. Use `stickyHeaderIndices` for React Native prop parity.
 
 <br />

@@ -24,10 +24,6 @@ import {
 } from "@legendapp/list/keyboard";
 ```
 
-<Callout>
-The root import (`@legendapp/list`) is still functional (they all share the same JavaScript code), but deprecated for strict typing. Prefer `@legendapp/list/react-native` and `@legendapp/list/react`.
-</Callout>
-
 See [Keyboard & Animated](../react-native/keyboard-and-animated) for Reanimated-only props such as `sharedValues` and `itemLayoutAnimation`.
 
 ## Required Props
@@ -1400,49 +1396,6 @@ function AverageSizeExample() {
 
 <br />
 
-## Deprecated APIs
-
-These APIs are deprecated or compatibility-only; new code should avoid them.
-
-### suggestEstimatedItemSize (deprecated)
-
-```ts
-suggestEstimatedItemSize?: boolean;
-```
-
-Deprecated development logging prop. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average item sizes directly. Add `getFixedItemSize` where sizes are exact, or set `estimatedItemSize` only when the default `100px` initial estimate is a poor fit.
-
-### getEstimatedItemSize (deprecated)
-
-```ts
-getEstimatedItemSize?: (item: ItemT, index: number, itemType?: string) => number;
-```
-
-Deprecated per-item estimate function. Prefer:
-
-- `estimatedItemSize` only when the default `100px` initial estimate is a poor fit
-- `getFixedItemSize` when item sizes are known exactly
-
-`getEstimatedItemSize` still works, but it prevents LegendList from switching to measured averages for unmeasured items of the same type. In most dynamic-size lists, no estimate is needed; use a single `estimatedItemSize` only as a small initial-mount optimization when rows are significantly different from `100px`.
-
-### initialContainerPoolRatio (deprecated)
-
-```ts
-initialContainerPoolRatio?: number;
-```
-
-Deprecated container-pool tuning escape hatch. LegendList now manages spare container capacity automatically, so new code should leave this unset.
-
-### stickyIndices (deprecated)
-
-```ts
-stickyIndices?: number[];
-```
-
-Deprecated alias for `stickyHeaderIndices`. Use `stickyHeaderIndices` for React Native prop parity.
-
-<br />
-
 
 ## guides
 
@@ -1739,7 +1692,6 @@ const averages = listRef.current?.getState().getAverageItemSizes();
 ```
 
 Pitfalls:
-- Do not use deprecated `getEstimatedItemSize` for new code.
 - Use `getItemType` when item families have meaningfully different average sizes.
 - Do not tune `estimatedItemSize` just to match measured averages closely; it mostly affects initial container count.
 
@@ -1791,7 +1743,13 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 ## 🔄 Breaking changes from v2
 
-1) **`maintainVisibleContentPosition` defaults**
+1) **Typed import paths**
+   - The root `@legendapp/list` component export has been removed in v3.
+   - Use:
+     - React Native: `@legendapp/list/react-native`
+     - React (Web): `@legendapp/list/react`
+
+2) **`maintainVisibleContentPosition` defaults**
    - v3 now enables scroll-position stabilization on size changes by default
    - Default behavior is equivalent to `maintainVisibleContentPosition={{ size: true, data: false }}`
    - Toggle specific behavior as needed:
@@ -1800,19 +1758,13 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
      - `maintainVisibleContentPosition={true}` to enable both `size` and `data`
      - `maintainVisibleContentPosition={false}` to disable both
 
-2) **Size hints and fixed-size callbacks**
+3) **Size hints and fixed-size callbacks**
    - `getFixedItemSize` is now `(item, index, type)`
-   - `getEstimatedItemSize` is deprecated. Prefer no estimate for most dynamic-size lists, `estimatedItemSize` only as a small initial allocation hint when rows are far from `100px`, or `getFixedItemSize` when sizes are known exactly.
-   - `suggestEstimatedItemSize` is deprecated. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average sizes directly.
+   - `getEstimatedItemSize` has been removed. Prefer no estimate for most dynamic-size lists, `estimatedItemSize` only as a small initial allocation hint when rows are far from `100px`, or `getFixedItemSize` when sizes are known exactly.
+   - `suggestEstimatedItemSize` has been removed. Use `ref.current?.getState().getAverageItemSizes()` to inspect measured average sizes directly.
 
-3) **Sticky headers prop rename**
-   - `stickyIndices` → `stickyHeaderIndices` (deprecated alias kept for now)
-
-4) **Typed import paths**
-   - Root import `@legendapp/list` remains functional, but is deprecated for strict typing in v3.
-   - Prefer:
-     - React Native: `@legendapp/list/react-native`
-     - React (Web): `@legendapp/list/react`
+4) **Sticky headers prop rename**
+   - `stickyIndices` has been removed. Use `stickyHeaderIndices`.
 
 5) **Keyboard integration entrypoint update**
    - v2 keyboard docs used `@legendapp/list/keyboard-controller` and `LegendList`.
@@ -1842,13 +1794,19 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
      - `positionByKey(key)`
    - `getState()` now also exposes listener helpers (`listen`, `listenToPosition`), `scrollVelocity`, and `getAverageItemSizes()`.
 
+9) **Removed beta compatibility props and types**
+   - `initialContainerPoolRatio` has been removed. LegendList manages spare container capacity automatically.
+   - `InitialScrollAnchor` has been removed. Use `ScrollIndexWithOffsetPosition` for public initial-scroll position typing.
+
 ## Migration checklist
 
+- Move imports to typed platform entrypoints (`/react-native` or `/react`)
 - Update fixed-size callback signatures to `(item, index, type)`
 - Replace `getEstimatedItemSize` with no estimate, `estimatedItemSize` only for unusual initial sizes, or `getFixedItemSize`
 - Replace `suggestEstimatedItemSize` with `getState().getAverageItemSizes()`
 - Replace `stickyIndices` with `stickyHeaderIndices`
-- Move imports to typed platform entrypoints (`/react-native` or `/react`)
+- Remove `initialContainerPoolRatio`; spare container capacity is automatic
+- Replace `InitialScrollAnchor` type references with `ScrollIndexWithOffsetPosition`
 - Update keyboard imports from `@legendapp/list/keyboard-controller` to `@legendapp/list/keyboard` and use `KeyboardAwareLegendList`
 - Wrap hook-using item components in a `renderItem` callback instead of passing them directly
 - For floating composers, replace content padding workarounds with `contentInsetEndAdjustment` on web or `useKeyboardChatComposerInset` with `KeyboardAwareLegendList` on React Native
@@ -1864,13 +1822,11 @@ npm install @legendapp/list@beta
 
 ## overview
 
-Legend List is a high-performance virtualized list for **React Native and React DOM**. It is a drop-in replacement for FlatList/FlashList on React Native, and a DOM-native virtual list on the web.
+Legend List is a high-performance virtualized list for **React Native and React DOM**. It is a drop-in replacement for FlatList/FlashList on React Native, and a DOM-native virtual list for React.
 
-Version 3 is a full cross-platform list system, not just a mobile list with a web adapter. It shares the same virtualization core across renderers while exposing typed entrypoints for each platform.
-
-- ✨ Fast dynamic-size virtualization
+- ✨ Dynamic sizes with no manual measuring
 - ✨ Accurate `initialScrollIndex` and `initialScrollAtEnd`
-- ✨ Chat and AI chat without inverted lists
+- ✨ Chat and AI chat without inverted lists or crazy hacks
 - ✨ Bidirectional infinite lists with scroll anchoring
 - ✨ Floating composer and overlay inset support
 - ✨ Optional item recycling with recycling-aware hooks
@@ -1913,7 +1869,7 @@ A FlashLight measurement of the above test shows that LegendList uses less CPU w
 - **React (Web)** → import from `@legendapp/list/react` and start with [Getting Started (Web)](../react/getting-started).
 - **React Native Web** → use the React Native entrypoint so your app keeps React Native component semantics.
 
-The root import (`@legendapp/list`) still works, and all of these imports run the same JS, but each import has platform-specific types.
+All of these imports run the same JS engine, the separate import paths are just for platform-specific types.
 
 ## Built for Chat and Feeds
 
@@ -1925,31 +1881,7 @@ Legend List has first-class primitives for timelines that grow at both ends:
 - `maintainVisibleContentPosition` keeps the current viewport stable during prepends and size changes.
 - `onStartReached` and `onEndReached` support bidirectional pagination.
 
-For floating composers and AI chat UIs, `contentInsetEndAdjustment` reserves real end space on web, and `KeyboardAwareLegendList` plus `useKeyboardChatComposerInset` do the same for React Native keyboard-driven layouts.
-
 See [Guides](../guides#chat-interfaces) and [Keyboard & Animated](../react-native/keyboard-and-animated#keyboardawarelegendlist).
-
-## Dynamic Layout Without Guesswork
-
-Items can have dynamic heights by default. You can add hints when you have them:
-
-- `estimatedItemSize` as a small initial container allocation hint when rows are far from the default `100px`
-- `getFixedItemSize` for fixed-size rows that do not need measuring
-- `getItemType` to pool recycled items and size averages by item type
-- `onItemSizeChanged` and `getState().getAverageItemSizes()` to inspect real measurements when needed
-
-For large initial scroll targets, v3 can seed the initial render near the requested target instead of walking every item from the beginning when the list has enough information to do so.
-
-## Web Support
-
-The `@legendapp/list/react` entrypoint renders DOM elements directly, with no React Native dependency required. It supports:
-
-- `useWindowScroll` for pages that scroll at the document level
-- CSS `style`, `contentContainerStyle`, and `contentContainerClassName`
-- `contentInsetEndAdjustment` as real trailing DOM space for overlays
-- the same core scroll, measurement, recycling, and viewability behavior as React Native
-
-See the [web examples](../react/examples) for product-style examples and source fixtures.
 
 ## Advanced List Features
 
@@ -1967,6 +1899,7 @@ Legend List v3 also includes:
 ## What’s new in v3
 
 - Web support (no React Native dependency required)
+- Improved performance and stability
 - SectionList component (`@legendapp/list/section-list`)
 - `alwaysRender` for keeping selected items mounted
 - New `maintainVisibleContentPosition` configuration
@@ -1974,7 +1907,7 @@ Legend List v3 also includes:
 - `contentInsetEndAdjustment` for floating composers and overlay UI
 - `KeyboardAwareLegendList` and `useKeyboardChatComposerInset`
 - Expanded `getState()` and async ref methods
-- `stickyHeaderIndices` (with `stickyIndices` deprecated)
+- `stickyHeaderIndices`
 
 Read the full change summary in [Migration to v3](../migration).
 
@@ -2063,10 +1996,6 @@ ref.current?.getState().getAverageItemSizes();
 
 For per-row diagnostics, use `onItemSizeChanged` to log actual size changes. Without estimates, Legend List defaults to `100px`, which is usually good enough; set `estimatedItemSize` only when that default causes noticeably too many or too few initial containers.
 
-<Callout>
-`getEstimatedItemSize` and `suggestEstimatedItemSize` are deprecated. Prefer `getFixedItemSize` when item sizes are known exactly, `getState().getAverageItemSizes()` when you want measured averages, and `estimatedItemSize` only as a rough initial allocation hint when rows are far from `100px`.
-</Callout>
-
 ### Keep Specific Items Mounted
 
 ```ts
@@ -2096,7 +2025,7 @@ npm install @legendapp/list
 
 ## Usage
 
-Legend List is a drop-in replacement for FlatList or FlashList. It only renders the items that are in view, which significantly reduces render cost for long lists.
+Legend List is a drop-in replacement for FlatList or FlashList, with better performance now more features for your apps. It only renders the items that are in view, which significantly reduces render cost for long lists.
 
 ### Quick Start
 
@@ -2124,7 +2053,7 @@ export function MyList() {
 
 ### Switch from FlashList
 
-If you're coming from FlashList, in most cases you can just rename the component and it will work as expected. Legend List does not recycle items by default, so to match FlashList's behavior you can enable `recycleItems`.
+If you're coming from FlashList, in most cases you can just rename the component and it will work as expected. Legend List does not [recycle items](../../api#recycleitems) by default, so to match FlashList's behavior you can enable `recycleItems`.
 
 ```diff
 return (
@@ -2167,7 +2096,7 @@ See [API Reference](../../api) for all properties of LegendList.
 
 Join us on [Discord](https://discord.gg/5CBaNtADNX) or [Github](https://github.com/LegendApp/legend-list) to get involved with the Legend community.
 
-Talk to Jay on [Bluesky](https://bsky.app/profile/jayz.us) or [Twitter](https://twitter.com/jmeistrich).
+Follow Jay on [Twitter](https://twitter.com/jmeistrich) for updates or send a message if you need help.
 
 ## Contributing
 
@@ -2282,16 +2211,6 @@ export function ReanimatedSharedValuesExample() {
 }
 ```
 
-Supported shared values:
-
-- `activeStickyIndex`
-- `isAtEnd`
-- `isAtStart`
-- `isNearEnd`
-- `isNearStart`
-- `isWithinMaintainScrollAtEndThreshold`
-- `scrollOffset`
-
 Notes:
 
 - `sharedValues` is only supported by `AnimatedLegendList` from `@legendapp/list/reanimated`.
@@ -2339,11 +2258,7 @@ const AnimatedLegendList = Animated.createAnimatedComponent(LegendList);
 
 ## KeyboardAwareLegendList
 
-Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for keyboard-aware scrolling, keyboard-driven insets, floating composers, and chat-style end anchoring.
-
-<Callout title="Background">
-The keyboard-aware chat integration was inspired by the v0 mobile app's composer and keyboard behavior.
-</Callout>
+Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for keyboard-aware scrolling, keyboard-driven insets, floating composers, and chat-style end anchoring. This was inspired by the v0 mobile app's composer and keyboard behavior.
 
 ```ts
 import {
