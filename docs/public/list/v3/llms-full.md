@@ -27,27 +27,6 @@ import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
 
 See [Keyboard & Animated](../react-native/keyboard-and-animated) for Reanimated-only props such as `sharedValues` and `itemLayoutAnimation`.
 
-### Exported type names
-
-`@legendapp/list/react-native` and `@legendapp/list/react` export:
-
-- `LegendListProps`, `LegendListRef`, `LegendListState`, `LegendListComponent`
-- `LegendListRenderItemProps`, `LegendListRecyclingState`
-- `AlwaysRenderConfig`, `ColumnWrapperStyle`, `MaintainScrollAtEndOptions`, `MaintainScrollAtEndOnOptions`, `MaintainVisibleContentPositionConfig`, `StickyHeaderConfig`
-- `Insets`, `LayoutRectangle`, `NativeScrollEvent`, `NativeSyntheticEvent`, `StyleProp`, `ViewStyle`
-- `LegendListAverageItemSize`, `LegendListMetrics`
-- `OnViewableItemsChanged`, `OnViewableItemsChangedInfo`, `ViewToken`, `ViewAmountToken`, `ViewabilityConfig`, `ViewabilityConfigCallbackPair`, `ViewabilityConfigCallbackPairs`, `ViewabilityCallback`, `ViewabilityAmountCallback`
-- `ScrollIndexWithOffset`, `ScrollIndexWithOffsetPosition`, `ScrollIndexWithOffsetAndContentOffset`
-
-`@legendapp/list/react` also exports `AnchoredEndSpaceConfig` for the web `anchoredEndSpace` prop.
-
-`@legendapp/list/section-list` exports:
-
-- `SectionListProps`, `SectionListRef`, `SectionListViewToken`, `SectionListOnViewableItemsChanged`
-- `SectionListSeparatorProps`, `BuildSectionListDataResult`, `FlatSectionListItem`, `SectionMeta`
-
-`@legendapp/list/reanimated` exports `AnimatedLegendListProps`, `AnimatedLegendListPropsBase`, and `AnimatedLegendListSharedValues`.
-
 ## Required Props
 ___
 LegendList supports two render modes:
@@ -56,6 +35,14 @@ LegendList supports two render modes:
 - Children mode: `children`
 
 When using one mode, the other mode's props should not be provided.
+
+### children
+
+```ts
+children: ReactNode;
+```
+
+Render list items directly as children in children mode (instead of `data`/`renderItem`).
 
 ### data
 
@@ -89,14 +76,6 @@ const Row = ({ item }: { item: ItemT }) => {
 
 See [React Native Docs](https://reactnative.dev/docs/flatlist#renderItem).
 
-### children
-
-```ts
-children: ReactNode;
-```
-
-Render list items directly as children in children mode (instead of `data`/`renderItem`).
-
 <br />
 
 ## Recommended Props
@@ -113,13 +92,15 @@ Return a stable unique key for each logical item. Reusing a key for different it
 
 If LegendList detects duplicate keys, it will log a warning.
 
-### recycleItems
+### recycleItems (React Native)
 
 ```ts
 recycleItems?: boolean; // default: false
 ```
 
 This will reuse the component rendered by your `renderItem` function. This can be a big performance improvement, but if your list items have internal state there is potential for state to carry over when a component is recycled for a different item. See [Performance](../performance#recycling-list-items).
+
+This is mostly useful for React Native to reuse native views - it has a neglibible effect on web.
 
 <br />
 
@@ -142,6 +123,29 @@ alwaysRender?: { top?: number; bottom?: number; indices?: number[]; keys?: strin
 
 Keeps selected items mounted even when they scroll out of view. Use this for pinned items or sentinels. `keys` requires a stable `keyExtractor`.
 
+### anchoredEndSpace
+
+```ts
+anchoredEndSpace?: {
+  anchorIndex: number;
+  anchorOffset?: number;
+  anchorMaxSize?: number;
+  onSizeChanged?: (size: number) => void;
+};
+```
+
+Keeps a chosen item visually anchored to the start by adding trailing space when the content below that item underflows.
+
+- `anchorIndex`: required index of the item to keep anchored.
+- `anchorOffset`: subtracts pixels from the computed blank space. Useful when the anchored row should stop short of the edge.
+- `anchorMaxSize`: caps the amount of inserted blank space.
+- `onSizeChanged`: called whenever the inserted blank space changes.
+
+Platform notes:
+
+- Web: available on `LegendList` from `@legendapp/list/react`.
+- React Native: use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for this lower-level integration.
+
 ### columnWrapperStyle
 
 ```ts
@@ -149,15 +153,6 @@ columnWrapperStyle?: StyleProp<ViewStyle>;
 ```
 
 Style applied to each column's wrapper view.
-
-### contentContainerStyle
-
-```ts
-contentContainerStyle?: StyleProp<ViewStyle>;
-```
-
-Style applied to the underlying ScrollView's content container.
-On web, this maps to the inner content div’s CSS styles.
 
 ### contentContainerClassName
 
@@ -172,6 +167,15 @@ Use this when your app styles the content container with CSS classes instead of 
 `gap-*`, `gap-x-*`, and `gap-y-*` classes in `contentContainerClassName` are not used for LegendList item spacing because items are positioned virtually. Use `contentContainerStyle={{ gap: 16, padding: 16 }}` or `columnWrapperStyle` instead.
 </Callout>
 
+### contentContainerStyle
+
+```ts
+contentContainerStyle?: StyleProp<ViewStyle>;
+```
+
+Style applied to the underlying ScrollView's content container.
+On web, this maps to the inner content div’s CSS styles.
+
 ### contentInset
 
 ```ts
@@ -180,6 +184,39 @@ contentInset?: { top: number; left: number; bottom: number; right: number };
 
 React Native only. Sets ScrollView content insets. On web, prefer padding via `contentContainerStyle` or `style`.
 
+### contentInsetEndAdjustment
+
+```ts
+contentInsetEndAdjustment?: number;
+```
+
+Web only on `LegendList` from `@legendapp/list/react`. Adjusts the effective end inset without replacing the base `contentInset`.
+
+LegendList also renders the adjustment as real trailing DOM space, so browser scroll range, `scrollToEnd`, and end-pinned behavior stay aligned when a floating composer or overlay grows and shrinks.
+
+For React Native keyboard-aware lists, pass a Reanimated shared value to `KeyboardAwareLegendList` instead:
+
+```tsx
+const { contentInsetEndAdjustment, onComposerLayout } =
+  useKeyboardChatComposerInset(listRef, composerRef);
+
+<KeyboardAwareLegendList
+  contentInsetEndAdjustment={contentInsetEndAdjustment}
+  ref={listRef}
+  {...props}
+/>
+```
+
+Use this for floating composers, input bars, or other UI that visually covers the end of the list while remaining outside normal list content flow.
+
+### dataVersion
+
+```ts
+dataVersion?: Key;
+```
+
+Version token that forces the list to treat data as updated even when the array reference is stable. Increment this when mutating `data` in place.
+
 ### drawDistance
 
 ```ts
@@ -187,6 +224,18 @@ drawDistance?: number;
 ```
 
 The `drawDistance` (defaults to `250`) is the buffer size in pixels above and below the viewport that will be rendered in advance. See [Performance](../performance#set-drawdistance-prop) for more.
+
+### estimatedHeaderSize
+
+```ts
+estimatedHeaderSize?: number;
+```
+
+Estimated height of `ListHeaderComponent` before it is measured.
+
+Use this when the expected header height is known before layout and the header appears above the first visible items. It lets LegendList allocate only the rows that are actually visible below the header on the initial frame, instead of rendering a full viewport of rows that may be hidden behind the header.
+
+The measured header size replaces this estimate after layout.
 
 ### estimatedItemSize
 
@@ -220,14 +269,6 @@ Prefer external state that each item subscribes to directly, for example React c
 
 See [React Native Docs](https://reactnative.dev/docs/flatlist#extraData).
 
-### dataVersion
-
-```ts
-dataVersion?: Key;
-```
-
-Version token that forces the list to treat data as updated even when the array reference is stable. Increment this when mutating `data` in place.
-
 ### getFixedItemSize
 
 ```ts
@@ -252,13 +293,15 @@ horizontal?: boolean; // default: false
 
 Renders items along the horizontal axis instead of the vertical axis.
 
-### useWindowScroll
+### initialScrollAtEnd
 
 ```ts
-useWindowScroll?: boolean; // default: false
+initialScrollAtEnd?: boolean; // default: false
 ```
 
-Web only. When true, LegendList listens to window/body scrolling instead of rendering its own scrollable container.
+When true, the list initializes scrolled to the last item. Overrides `initialScrollIndex` and `initialScrollOffset` when data is available.
+
+This is designed for chat/feed screens and works with dynamic item measurement, async data arrival, and end-inset changes from floating composers. On iOS, LegendList waits for native initial-scroll confirmation before marking the initial scroll complete.
 
 ### initialScrollIndex
 
@@ -277,16 +320,6 @@ initialScrollOffset?: number;
 ```
 
 Start scrolled to this offset.
-
-### initialScrollAtEnd
-
-```ts
-initialScrollAtEnd?: boolean; // default: false
-```
-
-When true, the list initializes scrolled to the last item. Overrides `initialScrollIndex` and `initialScrollOffset` when data is available.
-
-This is designed for chat/feed screens and works with dynamic item measurement, async data arrival, and end-inset changes from floating composers. On iOS, LegendList waits for native initial-scroll confirmation before marking the initial scroll complete.
 
 ### itemsAreEqual
 
@@ -354,18 +387,6 @@ Styling for internal View for `ListHeaderComponent`.
 
 See [React Native Docs](https://reactnative.dev/docs/flatlist#listheadercomponentstyle).
 
-### estimatedHeaderSize
-
-```ts
-estimatedHeaderSize?: number;
-```
-
-Estimated height of `ListHeaderComponent` before it is measured.
-
-Use this when the expected header height is known before layout and the header appears above the first visible items. It lets LegendList allocate only the rows that are actually visible below the header on the initial frame, instead of rendering a full viewport of rows that may be hidden behind the header.
-
-The measured header size replaces this estimate after layout.
-
 ### maintainScrollAtEnd
 
 ```ts
@@ -418,54 +439,6 @@ Passing `true` enables both `size` and `data`. Passing `false` disables both.
 
 React Native note: when `data` anchoring is enabled, LegendList uses ScrollView’s [maintainVisibleContentPosition](https://reactnative.dev/docs/scrollview#maintainvisiblecontentposition) under the hood. Android requires React Native 0.72+ for that prop.
 
-### anchoredEndSpace
-
-```ts
-anchoredEndSpace?: {
-  anchorIndex: number;
-  anchorOffset?: number;
-  anchorMaxSize?: number;
-  onSizeChanged?: (size: number) => void;
-};
-```
-
-Keeps a chosen item visually anchored to the start by adding trailing space when the content below that item underflows.
-
-- `anchorIndex`: required index of the item to keep anchored.
-- `anchorOffset`: subtracts pixels from the computed blank space. Useful when the anchored row should stop short of the edge.
-- `anchorMaxSize`: caps the amount of inserted blank space.
-- `onSizeChanged`: called whenever the inserted blank space changes.
-
-Platform notes:
-
-- Web: available on `LegendList` from `@legendapp/list/react`.
-- React Native: use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for this lower-level integration.
-
-### contentInsetEndAdjustment
-
-```ts
-contentInsetEndAdjustment?: number;
-```
-
-Web only on `LegendList` from `@legendapp/list/react`. Adjusts the effective end inset without replacing the base `contentInset`.
-
-LegendList also renders the adjustment as real trailing DOM space, so browser scroll range, `scrollToEnd`, and end-pinned behavior stay aligned when a floating composer or overlay grows and shrinks.
-
-For React Native keyboard-aware lists, pass a Reanimated shared value to `KeyboardAwareLegendList` instead:
-
-```tsx
-const { contentInsetEndAdjustment, onComposerLayout } =
-  useKeyboardChatComposerInset(listRef, composerRef);
-
-<KeyboardAwareLegendList
-  contentInsetEndAdjustment={contentInsetEndAdjustment}
-  ref={listRef}
-  {...props}
-/>
-```
-
-Use this for floating composers, input bars, or other UI that visually covers the end of the list while remaining outside normal list content flow.
-
 ### numColumns
 
 ```ts
@@ -473,16 +446,6 @@ numColumns?: number;
 ```
 
 Multiple columns will zig-zag like a flexWrap layout. Rows will take the maximum height of their columns, so items should all be the same height - masonry layouts are not supported.
-
-### rtl
-
-```ts
-rtl?: boolean;
-```
-
-Forces right-to-left layout behavior for this list instance. When omitted, LegendList uses the platform/global RTL setting, such as React Native's `I18nManager.isRTL`.
-
-This is mainly useful for horizontal lists when you need one list to override the app-level RTL direction.
 
 ### onEndReached
 
@@ -514,14 +477,6 @@ onItemSizeChanged?: (info: {
 
 Called whenever an item's rendered size changes. This can be used to inspect real row sizes, especially if you are deciding whether `estimatedItemSize` is worth setting for unusual item sizes.
 
-### onMetricsChange
-
-```ts
-onMetricsChange?: (metrics: { headerSize: number; footerSize: number }) => void;
-```
-
-Called when list layout metrics change (header or footer size updates).
-
 ### onLoad
 
 ```ts
@@ -529,6 +484,14 @@ onLoad?: (info: { elapsedTimeInMs: number }) => void;
 ```
 
 Called after the list is ready to render. Useful for measuring first render readiness.
+
+### onMetricsChange
+
+```ts
+onMetricsChange?: (metrics: { headerSize: number; footerSize: number }) => void;
+```
+
+Called when list layout metrics change (header or footer size updates).
 
 ### onRefresh
 
@@ -570,6 +533,17 @@ onStickyHeaderChange?: (info: { index: number; item: any }) => void;
 
 Called when the active sticky header changes.
 
+### onViewableItemsChanged
+
+```ts
+onViewableItemsChanged?: OnViewableItemsChanged | undefined;
+```
+
+Called when the viewability of rows changes, as defined by the `viewabilityConfig` prop.
+
+See [React Native Docs](https://reactnative.dev/docs/flatlist#onviewableitemschanged).
+
+
 ### overrideItemLayout
 
 ```ts
@@ -583,17 +557,6 @@ overrideItemLayout?: (
 ```
 
 Customize multi-column item layout (for example, setting `span`) before positions are computed.
-
-### onViewableItemsChanged
-
-```ts
-onViewableItemsChanged?: OnViewableItemsChanged | undefined;
-```
-
-Called when the viewability of rows changes, as defined by the `viewabilityConfig` prop.
-
-See [React Native Docs](https://reactnative.dev/docs/flatlist#onviewableitemschanged).
-
 
 ### progressViewOffset
 
@@ -652,6 +615,16 @@ const CustomScrollView = (props: ScrollViewProps) => {
 };
 ```
 
+### rtl
+
+```ts
+rtl?: boolean;
+```
+
+Forces right-to-left layout behavior for this list instance. When omitted, LegendList uses the platform/global RTL setting, such as React Native's `I18nManager.isRTL`.
+
+This is mainly useful for horizontal lists when you need one list to override the app-level RTL direction.
+
 ### snapToIndices
 
 ```ts
@@ -663,15 +636,6 @@ An array of item indices that become snap points. LegendList converts those indi
 On web, snap targets can point to items outside the currently mounted DOM window. LegendList computes the offsets from list measurements and estimates, so sparse snap targets can still work with virtualization.
 
 Use `getFixedItemSize` when snap targets have exact fixed sizes. For dynamic rows, `estimatedItemSize` is only an initial offset hint until rows are measured; it is usually worth setting only when rows differ significantly from the default `100px`.
-
-### stickyHeaderIndices
-
-```ts
-stickyHeaderIndices?: number[];
-```
-
-An array of indices for items that should stick to the top of the list while scrolling. Sticky headers remain visible at the top of the viewport as you scroll past them.
-Not supported with `horizontal={true}`.
 
 ### stickyHeaderConfig
 
@@ -687,6 +651,15 @@ Configures sticky header behavior:
 - `offset`: sticky top offset (for fixed toolbars/navbars)
 - `backdropComponent`: optional backdrop rendered behind sticky header
 
+### stickyHeaderIndices
+
+```ts
+stickyHeaderIndices?: number[];
+```
+
+An array of indices for items that should stick to the top of the list while scrolling. Sticky headers remain visible at the top of the viewport as you scroll past them.
+Not supported with `horizontal={true}`.
+
 ### style
 
 ```ts
@@ -694,6 +667,14 @@ style?: StyleProp<ViewStyle>;
 ```
 
 Style applied to the underlying ScrollView. On web this maps to the scroll container’s CSS style.
+
+### useWindowScroll
+
+```ts
+useWindowScroll?: boolean; // default: false
+```
+
+Web only. When true, LegendList listens to window/body scrolling instead of rendering its own scrollable container.
 
 ### viewabilityConfig
 
@@ -763,15 +744,15 @@ Common SectionList-specific props:
 
 ```ts
 type SectionListProps<ItemT, SectionT> = {
-  sections: ReadonlyArray<SectionListData<ItemT, SectionT>>;
-  renderItem?: (info: SectionListRenderItemInfo<ItemT, SectionT>) => ReactElement | null;
-  renderSectionHeader?: (info: { section: SectionListData<ItemT, SectionT> }) => ReactElement | null;
-  renderSectionFooter?: (info: { section: SectionListData<ItemT, SectionT> }) => ReactElement | null;
   ItemSeparatorComponent?: ComponentType<SectionListSeparatorProps<ItemT, SectionT>> | null;
   SectionSeparatorComponent?: ComponentType<SectionListSeparatorProps<ItemT, SectionT>> | ReactElement | null;
   keyExtractor?: (item: ItemT, index: number) => string;
-  stickySectionHeadersEnabled?: boolean;
   onViewableItemsChanged?: SectionListOnViewableItemsChanged<ItemT, SectionT>;
+  renderItem?: (info: SectionListRenderItemInfo<ItemT, SectionT>) => ReactElement | null;
+  renderSectionFooter?: (info: { section: SectionListData<ItemT, SectionT> }) => ReactElement | null;
+  renderSectionHeader?: (info: { section: SectionListData<ItemT, SectionT> }) => ReactElement | null;
+  sections: ReadonlyArray<SectionListData<ItemT, SectionT>>;
+  stickySectionHeadersEnabled?: boolean;
 };
 ```
 
@@ -805,14 +786,6 @@ ref.current?.scrollToLocation({
 ___
 
 <a id="ref-method-getstate"></a>
-
-### getState
-
-```ts
-getState(): LegendListState;
-```
-
-Returns a live snapshot API for advanced integrations. See [getState()](#getstate-details) for the full type, fields, listener channels, caveats, and examples.
 
 ### clearCaches
 
@@ -859,68 +832,21 @@ getScrollResponder(): any;
 
 Returns the platform scroll responder object for advanced integrations.
 
-### scrollToIndex
+### getState
 
 ```ts
-scrollToIndex(params: {
-  index: number;
-  animated?: boolean;
-  viewOffset?: number;
-  viewPosition?: number;
-}): Promise<void>;
+getState(): LegendListState;
 ```
 
-Scrolls to the item at the specified index. For the most accurate initial offset, use [getFixedItemSize](#getfixeditemsize) for truly fixed-size rows. Dynamic rows stabilize through measurement; `estimatedItemSize` is only an initial hint and is most useful when rows differ significantly from the default `100px`.
-Returns a promise that resolves when the imperative scroll finishes (or immediately if no scroll was needed).
+Returns a live snapshot API for advanced integrations. See [getState()](#getstate-details) for the full type, fields, listener channels, caveats, and examples.
 
-### scrollToOffset
+### reportContentInset
 
 ```ts
-scrollToOffset(params: {
-  offset: number;
-  animated?: boolean;
-}): Promise<void>;
+reportContentInset(inset?: { top?: number; left?: number; bottom?: number; right?: number } | null): void;
 ```
 
-Scroll to a specific content pixel offset in the list.
-
-Valid parameters:
-
-- *offset* (number) - The offset to scroll to. In case of horizontal being true, the offset is the x-value, in any other case the offset is the y-value. Required.
-- *animated* (boolean) - Whether the list should do an animation while scrolling. Defaults to true.
-
-### scrollToItem
-
-```ts
-scrollToItem(params: {
-  animated?: boolean,
-  item: Item,
-  viewOffset?: number;
-  viewPosition?: number;
-}): Promise<void>;
-```
-
-Requires linear scan through data - use [scrollToIndex](#scrolltoindex) instead if possible. Provided for compatibility with FlatList only.
-
-Valid parameters:
-
-- *animated* (boolean) - Whether the list should do an animation while scrolling. Defaults to true.
-- *item* (object) - The item to scroll to. Required.
-
-### scrollToEnd
-
-```ts
-scrollToEnd(params?: {
-  animated?: boolean,
-  viewOffset?: number,
-}): Promise<void>;
-```
-
-Scrolls to the end of the list.
-
-Valid parameters:
-
-- *animated* (boolean) - Whether the list should do an animation while scrolling. Defaults to true.
+Reports an externally measured content inset (merged with props/native insets). Pass `null`/`undefined` to clear.
 
 ### scrollIndexIntoView
 
@@ -997,13 +923,68 @@ export function ScrollToItemExample() {
 }
 ```
 
-### setVisibleContentAnchorOffset
+### scrollToEnd
 
 ```ts
-setVisibleContentAnchorOffset(value: number | ((current: number) => number)): void;
+scrollToEnd(params?: {
+  animated?: boolean,
+  viewOffset?: number,
+}): Promise<void>;
 ```
 
-Adjusts the internal anchor offset used by `maintainVisibleContentPosition`. Useful for advanced scroll anchoring behavior.
+Scrolls to the end of the list.
+
+Valid parameters:
+
+- *animated* (boolean) - Whether the list should do an animation while scrolling. Defaults to true.
+
+### scrollToIndex
+
+```ts
+scrollToIndex(params: {
+  index: number;
+  animated?: boolean;
+  viewOffset?: number;
+  viewPosition?: number;
+}): Promise<void>;
+```
+
+Scrolls to the item at the specified index. For the most accurate initial offset, use [getFixedItemSize](#getfixeditemsize) for truly fixed-size rows. Dynamic rows stabilize through measurement; `estimatedItemSize` is only an initial hint and is most useful when rows differ significantly from the default `100px`.
+Returns a promise that resolves when the imperative scroll finishes (or immediately if no scroll was needed).
+
+### scrollToItem
+
+```ts
+scrollToItem(params: {
+  animated?: boolean,
+  item: Item,
+  viewOffset?: number;
+  viewPosition?: number;
+}): Promise<void>;
+```
+
+Requires linear scan through data - use [scrollToIndex](#scrolltoindex) instead if possible. Provided for compatibility with FlatList only.
+
+Valid parameters:
+
+- *animated* (boolean) - Whether the list should do an animation while scrolling. Defaults to true.
+- *item* (object) - The item to scroll to. Required.
+
+### scrollToOffset
+
+```ts
+scrollToOffset(params: {
+  offset: number;
+  animated?: boolean;
+}): Promise<void>;
+```
+
+Scroll to a specific content pixel offset in the list.
+
+Valid parameters:
+
+- *offset* (number) - The offset to scroll to. In case of horizontal being true, the offset is the x-value, in any other case the offset is the y-value. Required.
+- *animated* (boolean) - Whether the list should do an animation while scrolling. Defaults to true.
 
 ### setScrollProcessingEnabled
 
@@ -1013,13 +994,13 @@ setScrollProcessingEnabled(enabled: boolean): void;
 
 Enables or disables scroll processing. Useful when you need to temporarily opt out of list virtualization behavior.
 
-### reportContentInset
+### setVisibleContentAnchorOffset
 
 ```ts
-reportContentInset(inset?: { top?: number; left?: number; bottom?: number; right?: number } | null): void;
+setVisibleContentAnchorOffset(value: number | ((current: number) => number)): void;
 ```
 
-Reports an externally measured content inset (merged with props/native insets). Pass `null`/`undefined` to clear.
+Adjusts the internal anchor offset used by `maintainVisibleContentPosition`. Useful for advanced scroll anchoring behavior.
 
 <br />
 
@@ -1028,32 +1009,6 @@ Reports an externally measured content inset (merged with props/native insets). 
 <Callout>
 Hooks are exported from both `@legendapp/list/react-native` and `@legendapp/list/react`.
 </Callout>
-
-### useRecyclingState
-
-```ts
-interface LegendListRecyclingState<T> {
-    item: T;
-    prevItem: T | undefined;
-    index: number;
-    prevIndex: number | undefined;
-}
-useRecyclingState: <T>(
-  updateState: ((info: LegendListRecyclingState<T>) => T) | T
-) => [T, Dispatch<SetStateAction<T>>];
-```
-
-`useRecyclingState` automatically resets the state when an item is recycled into a new item.
-
-```tsx
-import { useRecyclingState } from "@legendapp/list/react-native"
-export function ItemComponent({ item }) {
-    // Like useState but it resets when the item is recycled
-    const [isExpanded, setIsExpanded] = useRecyclingState(() => false);
-
-    // ...
-}
-```
 
 ### useIsLastItem
 
@@ -1102,6 +1057,55 @@ export function ItemComponent({ item }) {
     });
 
     // ...
+}
+```
+
+### useRecyclingState
+
+```ts
+interface LegendListRecyclingState<T> {
+    item: T;
+    prevItem: T | undefined;
+    index: number;
+    prevIndex: number | undefined;
+}
+useRecyclingState: <T>(
+  updateState: ((info: LegendListRecyclingState<T>) => T) | T
+) => [T, Dispatch<SetStateAction<T>>];
+```
+
+`useRecyclingState` automatically resets the state when an item is recycled into a new item.
+
+```tsx
+import { useRecyclingState } from "@legendapp/list/react-native"
+export function ItemComponent({ item }) {
+    // Like useState but it resets when the item is recycled
+    const [isExpanded, setIsExpanded] = useRecyclingState(() => false);
+
+    // ...
+}
+```
+
+### useSyncLayout
+
+```ts
+useSyncLayout: () => () => void;
+```
+
+A hook for synchronizing layout operations. This is useful for advanced use cases where you need to coordinate layout updates with other components or operations.
+
+```tsx
+import { View, Text } from "react-native";
+import { useSyncLayout } from "@legendapp/list/react-native"
+
+export function ItemComponent({ item }) {
+    const syncLayout = useSyncLayout();
+
+    return (
+        <View onLayout={syncLayout}>
+            <Text>{item.title}</Text>
+        </View>
+    );
 }
 ```
 
@@ -1202,29 +1206,6 @@ export function ItemComponent({ item }) {
 }
 ```
 
-### useSyncLayout
-
-```ts
-useSyncLayout: () => () => void;
-```
-
-A hook for synchronizing layout operations. This is useful for advanced use cases where you need to coordinate layout updates with other components or operations.
-
-```tsx
-import { View, Text } from "react-native";
-import { useSyncLayout } from "@legendapp/list/react-native"
-
-export function ItemComponent({ item }) {
-    const syncLayout = useSyncLayout();
-
-    return (
-        <View onLayout={syncLayout}>
-            <Text>{item.title}</Text>
-        </View>
-    );
-}
-```
-
 <a id="getstate-details"></a>
 
 ## getState()
@@ -1243,14 +1224,14 @@ type LegendListState = {
   elementAtIndex: (index: number) => any;
   end: number;
   endBuffered: number;
+  getAverageItemSizes: () => Record<string, LegendListAverageItemSize>;
   isAtEnd: boolean;
   isAtStart: boolean;
+  isEndReached: boolean;
   isNearEnd: boolean;
   isNearStart: boolean;
-  isEndReached: boolean;
   isStartReached: boolean;
   isWithinMaintainScrollAtEndThreshold: boolean;
-  getAverageItemSizes: () => Record<string, LegendListAverageItemSize>;
   listen: <T extends LegendListListenerType>(
     listenerType: T,
     callback: (value: ListenerTypeValueMap[T]) => void
@@ -1280,21 +1261,21 @@ type LegendListAverageItemSize = {
 - `data`: current data array reference used by the list
 - `elementAtIndex(index)`: rendered native element for an index (if currently mapped to a container)
 - `getAverageItemSizes()`: measured average item sizes grouped by item type. Use this to inspect real sizing data when deciding whether `estimatedItemSize` is worth setting for unusually sized rows.
-- `start` / `end`: visible range bounds without buffer
-- `startBuffered` / `endBuffered`: virtualized range bounds including draw buffer
 - `isAtStart` / `isAtEnd`: threshold-based booleans for edge-of-list state
 - `isNearStart` / `isNearEnd`: proximity booleans based on the configured start/end thresholds
 - `isStartReached` / `isEndReached`: whether the one-shot threshold callbacks are currently latched
 - `isWithinMaintainScrollAtEndThreshold`: whether the current scroll position is close enough to the tail for `maintainScrollAtEnd` to apply
+- `listen(...)`: subscribe to selected internal state channels
+- `listenToPosition(key, ...)`: subscribe to position updates for one item key
+- `positionAtIndex(index)`: known position for an index
+- `positionByKey(key)`: known position for an item key (if available)
 - `scroll`: current scroll offset
 - `scrollLength`: viewport length along scroll axis
 - `scrollVelocity`: current estimated scroll velocity
-- `positionByKey(key)`: known position for an item key (if available)
-- `sizes`: key-to-size map of known measured item sizes
-- `positionAtIndex(index)`: known position for an index
 - `sizeAtIndex(index)`: known measured size for an index
-- `listen(...)`: subscribe to selected internal state channels
-- `listenToPosition(key, ...)`: subscribe to position updates for one item key
+- `sizes`: key-to-size map of known measured item sizes
+- `start` / `end`: visible range bounds without buffer
+- `startBuffered` / `endBuffered`: virtualized range bounds including draw buffer
 
 ### Listen Channels
 
@@ -1939,8 +1920,6 @@ Legend List v3 also includes:
 
 - Web support (no React Native dependency required)
 - Improved performance and stability
-- Typed platform entrypoints for React Native and DOM-native React
-- New `maintainVisibleContentPosition` configuration
 - `initialScrollAtEnd`, improved initial-scroll targeting, and async imperative scroll methods
 - `anchoredEndSpace` and `contentInsetEndAdjustment` for chat, AI chat, floating composers, and overlay UI
 - `KeyboardAwareLegendList`, `useKeyboardChatComposerInset`, and `useKeyboardScrollToEnd`
@@ -2162,8 +2141,6 @@ The Reanimated version of AnimatedLegendList supports animated props with Reanim
 
 Under the hood, this integration uses `Reanimated.ScrollView`.
 
-The entrypoint also exports `AnimatedLegendListProps` and `AnimatedLegendListPropsBase` for typed wrappers around `AnimatedLegendList`.
-
 <Callout type="warn" title="Reanimated 4 sticky headers">
 In Reanimated 4, sticky headers can have performance problems. See <a href="https://docs.swmansion.com/react-native-reanimated/docs/guides/performance/#%EF%B8%8F-flickeringjittering-while-scrolling">Flickering/jittering while scrolling</a>.
 </Callout>
@@ -2345,18 +2322,6 @@ Do not wrap `KeyboardAwareLegendList` inside another `KeyboardAvoidingView`.
 Let the list manage keyboard-aware behavior, and adjacent UI (like composers/inputs) should handle their own keyboard avoiding, for example with `KeyboardStickyView`.
 </Callout>
 
-### Legacy keyboard avoiding
-
-`@legendapp/list/keyboard-legacy` exports `KeyboardAvoidingLegendList` for apps that still need the previous keyboard-avoiding integration.
-
-```ts
-import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
-```
-
-It wraps `AnimatedLegendList` from `@legendapp/list/reanimated`, integrates with `useKeyboardHandler` from `react-native-keyboard-controller`, and accepts the same list props as `AnimatedLegendList` plus `safeAreaInsetBottom`.
-
-Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for new chat and floating-composer screens.
-
 ### useKeyboardChatComposerInset
 
 Use `useKeyboardChatComposerInset` when a composer is outside normal list content flow, such as a `KeyboardStickyView` or floating input bar.
@@ -2438,6 +2403,19 @@ requestAnimationFrame(() => {
   scrollMessageToEnd({ animated: true, closeKeyboard: true });
 });
 ```
+
+### Legacy keyboard avoiding
+
+`@legendapp/list/keyboard-legacy` exports `KeyboardAvoidingLegendList` for apps that still need the previous keyboard-avoiding integration, which may work better on old architecture.
+
+```ts
+import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
+```
+
+It wraps `AnimatedLegendList` from `@legendapp/list/reanimated`, integrates with `useKeyboardHandler` from `react-native-keyboard-controller`, and accepts the same list props as `AnimatedLegendList` plus `safeAreaInsetBottom`.
+
+Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for new chat and floating-composer screens.
+
 
 ### Chat Example
 

@@ -8,8 +8,6 @@ The Reanimated version of AnimatedLegendList supports animated props with Reanim
 
 Under the hood, this integration uses `Reanimated.ScrollView`.
 
-The entrypoint also exports `AnimatedLegendListProps` and `AnimatedLegendListPropsBase` for typed wrappers around `AnimatedLegendList`.
-
 <Callout type="warn" title="Reanimated 4 sticky headers">
 In Reanimated 4, sticky headers can have performance problems. See <a href="https://docs.swmansion.com/react-native-reanimated/docs/guides/performance/#%EF%B8%8F-flickeringjittering-while-scrolling">Flickering/jittering while scrolling</a>.
 </Callout>
@@ -191,18 +189,6 @@ Do not wrap `KeyboardAwareLegendList` inside another `KeyboardAvoidingView`.
 Let the list manage keyboard-aware behavior, and adjacent UI (like composers/inputs) should handle their own keyboard avoiding, for example with `KeyboardStickyView`.
 </Callout>
 
-### Legacy keyboard avoiding
-
-`@legendapp/list/keyboard-legacy` exports `KeyboardAvoidingLegendList` for apps that still need the previous keyboard-avoiding integration.
-
-```ts
-import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
-```
-
-It wraps `AnimatedLegendList` from `@legendapp/list/reanimated`, integrates with `useKeyboardHandler` from `react-native-keyboard-controller`, and accepts the same list props as `AnimatedLegendList` plus `safeAreaInsetBottom`.
-
-Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for new chat and floating-composer screens.
-
 ### useKeyboardChatComposerInset
 
 Use `useKeyboardChatComposerInset` when a composer is outside normal list content flow, such as a `KeyboardStickyView` or floating input bar.
@@ -284,6 +270,19 @@ requestAnimationFrame(() => {
   scrollMessageToEnd({ animated: true, closeKeyboard: true });
 });
 ```
+
+### Legacy keyboard avoiding
+
+`@legendapp/list/keyboard-legacy` exports `KeyboardAvoidingLegendList` for apps that still need the previous keyboard-avoiding integration, which may work better on old architecture.
+
+```ts
+import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
+```
+
+It wraps `AnimatedLegendList` from `@legendapp/list/reanimated`, integrates with `useKeyboardHandler` from `react-native-keyboard-controller`, and accepts the same list props as `AnimatedLegendList` plus `safeAreaInsetBottom`.
+
+Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for new chat and floating-composer screens.
+
 
 ### Chat Example
 

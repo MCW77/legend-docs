@@ -90,8 +90,6 @@ Legend List v3 also includes:
 
 - Web support (no React Native dependency required)
 - Improved performance and stability
-- Typed platform entrypoints for React Native and DOM-native React
-- New `maintainVisibleContentPosition` configuration
 - `initialScrollAtEnd`, improved initial-scroll targeting, and async imperative scroll methods
 - `anchoredEndSpace` and `contentInsetEndAdjustment` for chat, AI chat, floating composers, and overlay UI
 - `KeyboardAwareLegendList`, `useKeyboardChatComposerInset`, and `useKeyboardScrollToEnd`
