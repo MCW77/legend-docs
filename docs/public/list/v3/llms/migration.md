@@ -1,4 +1,4 @@
-Version 3 introduces first‑class Web support and a new SectionList component, plus several API improvements. It’s currently labeled **beta** while we collect feedback.
+Version 3 introduces first‑class Web support and a new SectionList component, plus several API improvements.
 
 ## ✨ New in v3
 
@@ -75,7 +75,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
      - `positionByKey(key)`
    - `getState()` now also exposes listener helpers (`listen`, `listenToPosition`), `scrollVelocity`, and `getAverageItemSizes()`.
 
-9) **Removed beta compatibility props and types**
+9) **Removed compatibility props and types**
    - `initialContainerPoolRatio` has been removed. LegendList manages spare container capacity automatically.
    - `InitialScrollAnchor` has been removed. Use `ScrollIndexWithOffsetPosition` for public initial-scroll position typing.
 
@@ -97,5 +97,5 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 ## Install
 
 ```npm
-npm install @legendapp/list@beta
+npm install @legendapp/list
 ```

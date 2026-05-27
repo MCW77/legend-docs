@@ -1,6 +1,6 @@
 {
     "title": "Version 3",
-    "description": "Current beta version",
+    "description": "Current stable version",
     "root": true,
     "pages": [
         "overview",
