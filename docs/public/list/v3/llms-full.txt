@@ -2341,6 +2341,10 @@ const AnimatedLegendList = Animated.createAnimatedComponent(LegendList);
 
 Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for keyboard-aware scrolling, keyboard-driven insets, floating composers, and chat-style end anchoring.
 
+<Callout title="Background">
+The keyboard-aware chat integration was inspired by the v0 mobile app's composer and keyboard behavior.
+</Callout>
+
 ```ts
 import {
   KeyboardAwareLegendList,
