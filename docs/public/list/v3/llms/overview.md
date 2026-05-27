@@ -39,15 +39,20 @@ A FlashLight measurement of the above test shows that LegendList uses less CPU w
 
 <img src="/open-source/list/flashlight.png" className="w-[800px] max-w-full mx-auto mt-8 rounded-xl overflow-hidden border border-fd-border" />
 
-## Choose your platform
-
-- **React Native** → import from `@legendapp/list/react-native` and start with [Getting Started (React Native)](../react-native/getting-started).
-- **React (Web)** → import from `@legendapp/list/react` and start with [Getting Started (Web)](../react/getting-started).
-- **React Native Web** → use the React Native entrypoint so your app keeps React Native component semantics.
-
-All of these imports run the same JS engine, the separate import paths are just for platform-specific types.
-
 ## Built for Chat and Feeds
+
+<div className="w-[800px] max-w-full mx-auto rounded-xl overflow-hidden">
+    <video
+        src="/open-source/assets/legendlist3-chat.mp4"
+        controls
+        width="100%"
+        height="100%"
+        autoPlay
+        loop
+        muted
+        className="rounded-xl"
+    />
+</div>
 
 Legend List has first-class primitives for timelines that grow at both ends:
 
@@ -55,9 +60,18 @@ Legend List has first-class primitives for timelines that grow at both ends:
 - `initialScrollIndex` supports target indices with `viewOffset` and `viewPosition`.
 - `maintainScrollAtEnd` follows new messages while the user is already near the end.
 - `maintainVisibleContentPosition` keeps the current viewport stable during prepends and size changes.
+- `anchoredEndSpace` reserves tail space so a newly sent row can land in a readable position above overlays.
 - `onStartReached` and `onEndReached` support bidirectional pagination.
 
 See [Guides](../guides#chat-interfaces) and [Keyboard & Animated](../react-native/keyboard-and-animated#keyboardawarelegendlist).
+
+## Choose your platform
+
+- **React Native** → import from `@legendapp/list/react-native` and start with [Getting Started (React Native)](../react-native/getting-started).
+- **React (Web)** → import from `@legendapp/list/react` and start with [Getting Started (Web)](../react/getting-started).
+- **React Native Web** → use the React Native entrypoint so your app keeps React Native component semantics.
+
+All of these imports run the same JS engine, the separate import paths are just for platform-specific types.
 
 ## Advanced List Features
 
@@ -76,13 +90,17 @@ Legend List v3 also includes:
 
 - Web support (no React Native dependency required)
 - Improved performance and stability
+- Typed platform entrypoints for React Native and DOM-native React
+- New `maintainVisibleContentPosition` configuration
+- `initialScrollAtEnd`, improved initial-scroll targeting, and async imperative scroll methods
+- `anchoredEndSpace` and `contentInsetEndAdjustment` for chat, AI chat, floating composers, and overlay UI
+- `KeyboardAwareLegendList`, `useKeyboardChatComposerInset`, and `useKeyboardScrollToEnd`
 - SectionList component (`@legendapp/list/section-list`)
 - `alwaysRender` for keeping selected items mounted
-- New `maintainVisibleContentPosition` configuration
-- `initialScrollAtEnd` and improved initial-scroll targeting
-- `contentInsetEndAdjustment` for floating composers and overlay UI
-- `KeyboardAwareLegendList` and `useKeyboardChatComposerInset`
-- Expanded `getState()` and async ref methods
-- `stickyHeaderIndices`
+- `stickyHeaderIndices` and `stickyHeaderConfig`
+- `useWindowScroll` for document-level web scrolling
+- Reanimated `sharedValues` and `itemLayoutAnimation`
+- `estimatedHeaderSize`, `dataVersion`, and `itemsAreEqual`
+- Expanded `getState()` with listener helpers, `getAverageItemSizes()`, and scroll metrics
 
 Read the full change summary in [Migration to v3](../migration).
