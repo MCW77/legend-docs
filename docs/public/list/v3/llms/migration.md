@@ -17,6 +17,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 ### Better Scroll & Metrics APIs
 - `initialScrollAtEnd` for chat and feeds
+- `anchoredEndSpace` for reserving readable space after a chat or feed anchor row
 - `contentInsetEndAdjustment` for floating composers and overlay UI at the end of a list
 - `useKeyboardChatComposerInset` for React Native keyboard chat composers
 - `onMetricsChange` for header/footer size changes
@@ -52,6 +53,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
    - In v3 use `@legendapp/list/keyboard` and import `KeyboardAwareLegendList`.
    - `LegendList` is no longer exported from the `@legendapp/list/keyboard` entrypoint.
    - Chat screens can use `KeyboardAwareLegendList`, `useKeyboardScrollToEnd`, and `useKeyboardChatComposerInset` from `@legendapp/list/keyboard`.
+   - `KeyboardAvoidingLegendList` is available from `@legendapp/list/keyboard-legacy` for apps that still need the previous keyboard-avoiding integration.
 
 6) **`renderItem` is a render callback**
    - `renderItem` is called directly as `(props) => ReactNode`.
@@ -89,6 +91,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 - Remove `initialContainerPoolRatio`; spare container capacity is automatic
 - Replace `InitialScrollAnchor` type references with `ScrollIndexWithOffsetPosition`
 - Update keyboard imports from `@legendapp/list/keyboard-controller` to `@legendapp/list/keyboard` and use `KeyboardAwareLegendList`
+- If you still need the previous keyboard-avoiding integration, import `KeyboardAvoidingLegendList` from `@legendapp/list/keyboard-legacy`
 - Wrap hook-using item components in a `renderItem` callback instead of passing them directly
 - For floating composers, replace content padding workarounds with `contentInsetEndAdjustment` on web or `useKeyboardChatComposerInset` with `KeyboardAwareLegendList` on React Native
 - `await` imperative scroll calls if your code depends on post-scroll timing

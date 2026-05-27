@@ -275,6 +275,19 @@ requestAnimationFrame(() => {
 });
 ```
 
+### Legacy keyboard avoiding
+
+`@legendapp/list/keyboard-legacy` exports `KeyboardAvoidingLegendList` for apps that still need the previous keyboard-avoiding integration, which may work better on old architecture.
+
+```ts
+import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
+```
+
+It wraps `AnimatedLegendList` from `@legendapp/list/reanimated`, integrates with `useKeyboardHandler` from `react-native-keyboard-controller`, and accepts the same list props as `AnimatedLegendList` plus `safeAreaInsetBottom`.
+
+Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for new chat and floating-composer screens.
+
+
 ### Chat Example
 
 For chat screens, `KeyboardAwareLegendList` works with a few chat-specific pieces:

@@ -22,9 +22,31 @@ import {
   useKeyboardChatComposerInset,
   useKeyboardScrollToEnd,
 } from "@legendapp/list/keyboard";
+import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
 ```
 
 See [Keyboard & Animated](../react-native/keyboard-and-animated) for Reanimated-only props such as `sharedValues` and `itemLayoutAnimation`.
+
+### Exported type names
+
+`@legendapp/list/react-native` and `@legendapp/list/react` export:
+
+- `LegendListProps`, `LegendListRef`, `LegendListState`, `LegendListComponent`
+- `LegendListRenderItemProps`, `LegendListRecyclingState`
+- `AlwaysRenderConfig`, `ColumnWrapperStyle`, `MaintainScrollAtEndOptions`, `MaintainScrollAtEndOnOptions`, `MaintainVisibleContentPositionConfig`, `StickyHeaderConfig`
+- `Insets`, `LayoutRectangle`, `NativeScrollEvent`, `NativeSyntheticEvent`, `StyleProp`, `ViewStyle`
+- `LegendListAverageItemSize`, `LegendListMetrics`
+- `OnViewableItemsChanged`, `OnViewableItemsChangedInfo`, `ViewToken`, `ViewAmountToken`, `ViewabilityConfig`, `ViewabilityConfigCallbackPair`, `ViewabilityConfigCallbackPairs`, `ViewabilityCallback`, `ViewabilityAmountCallback`
+- `ScrollIndexWithOffset`, `ScrollIndexWithOffsetPosition`, `ScrollIndexWithOffsetAndContentOffset`
+
+`@legendapp/list/react` also exports `AnchoredEndSpaceConfig` for the web `anchoredEndSpace` prop.
+
+`@legendapp/list/section-list` exports:
+
+- `SectionListProps`, `SectionListRef`, `SectionListViewToken`, `SectionListOnViewableItemsChanged`
+- `SectionListSeparatorProps`, `BuildSectionListDataResult`, `FlatSectionListItem`, `SectionMeta`
+
+`@legendapp/list/reanimated` exports `AnimatedLegendListProps`, `AnimatedLegendListPropsBase`, and `AnimatedLegendListSharedValues`.
 
 ## Required Props
 ___
@@ -1736,6 +1758,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 
 ### Better Scroll & Metrics APIs
 - `initialScrollAtEnd` for chat and feeds
+- `anchoredEndSpace` for reserving readable space after a chat or feed anchor row
 - `contentInsetEndAdjustment` for floating composers and overlay UI at the end of a list
 - `useKeyboardChatComposerInset` for React Native keyboard chat composers
 - `onMetricsChange` for header/footer size changes
@@ -1771,6 +1794,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
    - In v3 use `@legendapp/list/keyboard` and import `KeyboardAwareLegendList`.
    - `LegendList` is no longer exported from the `@legendapp/list/keyboard` entrypoint.
    - Chat screens can use `KeyboardAwareLegendList`, `useKeyboardScrollToEnd`, and `useKeyboardChatComposerInset` from `@legendapp/list/keyboard`.
+   - `KeyboardAvoidingLegendList` is available from `@legendapp/list/keyboard-legacy` for apps that still need the previous keyboard-avoiding integration.
 
 6) **`renderItem` is a render callback**
    - `renderItem` is called directly as `(props) => ReactNode`.
@@ -1808,6 +1832,7 @@ Version 3 introduces first‑class Web support and a new SectionList component, 
 - Remove `initialContainerPoolRatio`; spare container capacity is automatic
 - Replace `InitialScrollAnchor` type references with `ScrollIndexWithOffsetPosition`
 - Update keyboard imports from `@legendapp/list/keyboard-controller` to `@legendapp/list/keyboard` and use `KeyboardAwareLegendList`
+- If you still need the previous keyboard-avoiding integration, import `KeyboardAvoidingLegendList` from `@legendapp/list/keyboard-legacy`
 - Wrap hook-using item components in a `renderItem` callback instead of passing them directly
 - For floating composers, replace content padding workarounds with `contentInsetEndAdjustment` on web or `useKeyboardChatComposerInset` with `KeyboardAwareLegendList` on React Native
 - `await` imperative scroll calls if your code depends on post-scroll timing
@@ -1923,7 +1948,7 @@ Legend List v3 also includes:
 - `alwaysRender` for keeping selected items mounted
 - `stickyHeaderIndices` and `stickyHeaderConfig`
 - `useWindowScroll` for document-level web scrolling
-- Reanimated `sharedValues` and `itemLayoutAnimation`
+- Reanimated `sharedValues` and `itemLayoutAnimation` props
 - `estimatedHeaderSize`, `dataVersion`, and `itemsAreEqual`
 - Expanded `getState()` with listener helpers, `getAverageItemSizes()`, and scroll metrics
 
@@ -2137,6 +2162,8 @@ The Reanimated version of AnimatedLegendList supports animated props with Reanim
 
 Under the hood, this integration uses `Reanimated.ScrollView`.
 
+The entrypoint also exports `AnimatedLegendListProps` and `AnimatedLegendListPropsBase` for typed wrappers around `AnimatedLegendList`.
+
 <Callout type="warn" title="Reanimated 4 sticky headers">
 In Reanimated 4, sticky headers can have performance problems. See <a href="https://docs.swmansion.com/react-native-reanimated/docs/guides/performance/#%EF%B8%8F-flickeringjittering-while-scrolling">Flickering/jittering while scrolling</a>.
 </Callout>
@@ -2276,7 +2303,7 @@ const AnimatedLegendList = Animated.createAnimatedComponent(LegendList);
 
 ## KeyboardAwareLegendList
 
-Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for keyboard-aware scrolling, keyboard-driven insets, floating composers, and chat-style end anchoring. This was inspired by the v0 mobile app's composer and keyboard behavior.
+Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for keyboard-aware scrolling, keyboard-driven insets, floating composers, and chat-style end anchoring. This was inspired by the [v0 mobile app's](https://v0.app/ios) composer and keyboard behavior.
 
 ```ts
 import {
@@ -2317,6 +2344,18 @@ Useful props:
 Do not wrap `KeyboardAwareLegendList` inside another `KeyboardAvoidingView`.
 Let the list manage keyboard-aware behavior, and adjacent UI (like composers/inputs) should handle their own keyboard avoiding, for example with `KeyboardStickyView`.
 </Callout>
+
+### Legacy keyboard avoiding
+
+`@legendapp/list/keyboard-legacy` exports `KeyboardAvoidingLegendList` for apps that still need the previous keyboard-avoiding integration.
+
+```ts
+import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
+```
+
+It wraps `AnimatedLegendList` from `@legendapp/list/reanimated`, integrates with `useKeyboardHandler` from `react-native-keyboard-controller`, and accepts the same list props as `AnimatedLegendList` plus `safeAreaInsetBottom`.
+
+Use `KeyboardAwareLegendList` from `@legendapp/list/keyboard` for new chat and floating-composer screens.
 
 ### useKeyboardChatComposerInset
 

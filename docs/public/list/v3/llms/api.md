@@ -20,9 +20,31 @@ import {
   useKeyboardChatComposerInset,
   useKeyboardScrollToEnd,
 } from "@legendapp/list/keyboard";
+import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
 ```
 
 See [Keyboard & Animated](../react-native/keyboard-and-animated) for Reanimated-only props such as `sharedValues` and `itemLayoutAnimation`.
+
+### Exported type names
+
+`@legendapp/list/react-native` and `@legendapp/list/react` export:
+
+- `LegendListProps`, `LegendListRef`, `LegendListState`, `LegendListComponent`
+- `LegendListRenderItemProps`, `LegendListRecyclingState`
+- `AlwaysRenderConfig`, `ColumnWrapperStyle`, `MaintainScrollAtEndOptions`, `MaintainScrollAtEndOnOptions`, `MaintainVisibleContentPositionConfig`, `StickyHeaderConfig`
+- `Insets`, `LayoutRectangle`, `NativeScrollEvent`, `NativeSyntheticEvent`, `StyleProp`, `ViewStyle`
+- `LegendListAverageItemSize`, `LegendListMetrics`
+- `OnViewableItemsChanged`, `OnViewableItemsChangedInfo`, `ViewToken`, `ViewAmountToken`, `ViewabilityConfig`, `ViewabilityConfigCallbackPair`, `ViewabilityConfigCallbackPairs`, `ViewabilityCallback`, `ViewabilityAmountCallback`
+- `ScrollIndexWithOffset`, `ScrollIndexWithOffsetPosition`, `ScrollIndexWithOffsetAndContentOffset`
+
+`@legendapp/list/react` also exports `AnchoredEndSpaceConfig` for the web `anchoredEndSpace` prop.
+
+`@legendapp/list/section-list` exports:
+
+- `SectionListProps`, `SectionListRef`, `SectionListViewToken`, `SectionListOnViewableItemsChanged`
+- `SectionListSeparatorProps`, `BuildSectionListDataResult`, `FlatSectionListItem`, `SectionMeta`
+
+`@legendapp/list/reanimated` exports `AnimatedLegendListProps`, `AnimatedLegendListPropsBase`, and `AnimatedLegendListSharedValues`.
 
 ## Required Props
 ___

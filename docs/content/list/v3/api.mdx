@@ -24,6 +24,7 @@ import {
   useKeyboardChatComposerInset,
   useKeyboardScrollToEnd,
 } from "@legendapp/list/keyboard";
+import { KeyboardAvoidingLegendList } from "@legendapp/list/keyboard-legacy";
 ```
 
 See [Keyboard & Animated](../react-native/keyboard-and-animated) for Reanimated-only props such as `sharedValues` and `itemLayoutAnimation`.
@@ -93,13 +94,15 @@ Return a stable unique key for each logical item. Reusing a key for different it
 
 If LegendList detects duplicate keys, it will log a warning.
 
-### recycleItems
+### recycleItems (React Native)
 
 ```ts
 recycleItems?: boolean; // default: false
 ```
 
 This will reuse the component rendered by your `renderItem` function. This can be a big performance improvement, but if your list items have internal state there is potential for state to carry over when a component is recycled for a different item. See [Performance](../performance#recycling-list-items).
+
+This is mostly useful for React Native to reuse native views - it has a neglibible effect on web.
 
 <br />
 

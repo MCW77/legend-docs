@@ -99,7 +99,7 @@ Legend List v3 also includes:
 - `alwaysRender` for keeping selected items mounted
 - `stickyHeaderIndices` and `stickyHeaderConfig`
 - `useWindowScroll` for document-level web scrolling
-- Reanimated `sharedValues` and `itemLayoutAnimation`
+- Reanimated `sharedValues` and `itemLayoutAnimation` props
 - `estimatedHeaderSize`, `dataVersion`, and `itemsAreEqual`
 - Expanded `getState()` with listener helpers, `getAverageItemSizes()`, and scroll metrics
 
